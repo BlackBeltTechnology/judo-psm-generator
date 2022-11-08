@@ -110,21 +110,22 @@ public class PsmGenerator {
         parameter.projectGenerator.getGeneratorTemplates().stream().forEach(generatorTemplate -> {
 
             Function<Object, Context.Builder> defaultContextBuilder = o -> {
-                Context.Builder contextBuilder = Context
-                        .newBuilder(o)
-                        .combine(ADD_DEBUG_TO_TEMPLATE, CLIENT_TEMPLATE_DEBUG)
-                        .combine(ACTOR_TYPES, actorTypes)
-                        .combine(TEMPLATE, generatorTemplate)
-                        .combine(SELF, o)
-                        .combine(MODEL, model);
-
-                contextBuilder.push(new ActorTypeValueResolver());
-
+                ImmutableMap.Builder params = ImmutableMap.<String, Object>builder()
+                    .put(ADD_DEBUG_TO_TEMPLATE, CLIENT_TEMPLATE_DEBUG)
+                    .put(ACTOR_TYPES, actorTypes)
+                    .put(TEMPLATE, generatorTemplate)
+                    .put(SELF, o)
+                    .put(MODEL, model);
 
                 Map<String, ?> extraVariables = parameter.extraContextVariables.get();
                 extraVariables.forEach((k, v) -> {
-                    contextBuilder.combine(k, v);
+                    if (k != null && v != null) {
+                        params.put(k, v);
+                    }
                 });
+
+                Context.Builder contextBuilder = Context.newBuilder(params.build());
+                contextBuilder.push(new PsmValueResolver());
 
                 return contextBuilder;
             };

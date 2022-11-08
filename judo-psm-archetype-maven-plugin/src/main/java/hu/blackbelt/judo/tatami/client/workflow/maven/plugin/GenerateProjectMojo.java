@@ -1,6 +1,7 @@
 package hu.blackbelt.judo.tatami.client.workflow.maven.plugin;
 
 import com.google.common.io.Files;
+import hu.blackbelt.judo.meta.psm.PsmUtils;
 import hu.blackbelt.judo.meta.psm.runtime.PsmModel;
 import hu.blackbelt.judo.meta.psm.support.PsmModelResourceSupport;
 import hu.blackbelt.judo.psm.archetype.generator.PsmGenerator;
@@ -85,6 +86,9 @@ public class GenerateProjectMojo extends AbstractMojo {
 
     @Parameter(property = "helpers")
     private List<String> helpers = new ArrayList<>();
+
+    @Parameter(property = "resolvers")
+    private List<String> resolvers = new ArrayList<>();
 
     @Parameter(property="templateParameters", required = false, readonly = true)
     private HashMap<String, String> templateParameters;
@@ -423,7 +427,7 @@ public class GenerateProjectMojo extends AbstractMojo {
                     .targetDirectoryResolver(() -> destination)
                     .extraContextVariables(() -> extras)
                     .actorTypeTargetDirectoryResolver(a -> destination)
-                    .actorTypePredicate(a -> actors == null || actors.isEmpty() || actors.contains(a.getFQName())));
+                    .actorTypePredicate(a -> actors == null || actors.isEmpty() || actors.contains(PsmUtils.namespaceToString(a.getNamespace()) + "::" + a.getName())));
 
         } catch (URISyntaxException e) {
             throw new MojoExecutionException("Invalid URL: ", e);

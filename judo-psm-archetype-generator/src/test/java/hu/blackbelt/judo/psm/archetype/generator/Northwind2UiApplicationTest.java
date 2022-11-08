@@ -81,9 +81,9 @@ public class Northwind2UiApplicationTest {
                 "DECORATED Name: InternalUser",
                 "Extra: extra",
                 "FQName: demo::InternalUser",
-                "PlainName: InternalUser",
-                "Plain FQ: demo__InternalUser",
-                "Path FQ: demo__InternalUser",
+                "PlainName: internaluser",
+                "Plain FQ: demo__internaluser",
+                "Path FQ: demo__internal_user",
                 "ModelName FQ: Demo",
                 "Package Name FQ: ",
                 ""
@@ -92,11 +92,12 @@ public class Northwind2UiApplicationTest {
         assertThat(linesOf(new File(testOutput, "InternalUser/actornameOverride1"))).containsExactly(
                 "Name: InternalUser",
                 "FQName: demo::InternalUser",
-                "PlainName: InternalUser",
-                "Plain FQ: demo__InternalUser",
-                "Path FQ: demo__InternalUser",
+                "PlainName: internaluser",
+                "Plain FQ: demo__internaluser",
+                "Path FQ: demo__internal_user",
                 "ModelName FQ: Demo",
-                "Package Name FQ: "
+                "Package Name FQ: ",
+                ""
         );
 
     }
