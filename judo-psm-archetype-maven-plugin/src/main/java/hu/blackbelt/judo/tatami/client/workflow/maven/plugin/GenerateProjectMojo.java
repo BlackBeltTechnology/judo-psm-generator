@@ -1,5 +1,6 @@
 package hu.blackbelt.judo.tatami.client.workflow.maven.plugin;
 
+import com.github.jknack.handlebars.ValueResolver;
 import com.google.common.io.Files;
 import hu.blackbelt.judo.meta.psm.PsmUtils;
 import hu.blackbelt.judo.meta.psm.runtime.PsmModel;
@@ -87,8 +88,8 @@ public class GenerateProjectMojo extends AbstractMojo {
     @Parameter(property = "helpers")
     private List<String> helpers = new ArrayList<>();
 
-    @Parameter(property = "resolvers")
-    private List<String> resolvers = new ArrayList<>();
+    @Parameter(property = "valueResolvers")
+    private List<String> valueResolvers = new ArrayList<>();
 
     @Parameter(property="templateParameters", required = false, readonly = true)
     private HashMap<String, String> templateParameters;
@@ -412,6 +413,23 @@ public class GenerateProjectMojo extends AbstractMojo {
                 }
             }
 
+            Collection<ValueResolver> resolvedValueResolvers = new ArrayList<>();
+            if (valueResolvers != null) {
+                for (String valueResolverClass : valueResolvers) {
+                    try {
+                        Class clazz = Thread.currentThread().getContextClassLoader().loadClass(valueResolverClass);
+                        Object o = clazz.getDeclaredConstructor().newInstance();
+                        if (o instanceof ValueResolver) {
+                            resolvedValueResolvers.add((ValueResolver) o);
+                        } else {
+                            getLog().error("Could not instantiate value resolver class: " + valueResolverClass);
+                        }
+                    } catch (Exception e) {
+                        getLog().error("Could not load value resolver class: " + valueResolverClass);
+                    }
+                }
+            }
+
             Map<String, Object> extras = project.getProperties().entrySet().stream().collect(
                     Collectors.toMap(
                             e -> String.valueOf(e.getKey()),
@@ -423,7 +441,7 @@ public class GenerateProjectMojo extends AbstractMojo {
             extras.putAll(templateParameters);
 
             PsmGenerator.executePsmGenerationToDirectory(PsmGenerator.PsmGeneratorParameter.psmGeneratorParameter()
-                    .projectGenerator(PsmGenerator.createGeneratorContext(psmModel, type, resolvedUris, resolvedHelpers, null, null))
+                    .projectGenerator(PsmGenerator.createGeneratorContext(psmModel, type, resolvedUris, resolvedHelpers, resolvedValueResolvers, null, null))
                     .targetDirectoryResolver(() -> destination)
                     .extraContextVariables(() -> extras)
                     .actorTypeTargetDirectoryResolver(a -> destination)

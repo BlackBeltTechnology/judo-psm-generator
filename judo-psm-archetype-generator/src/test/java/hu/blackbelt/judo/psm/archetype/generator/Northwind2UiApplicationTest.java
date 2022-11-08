@@ -61,6 +61,7 @@ public class Northwind2UiApplicationTest {
                                             new File(TARGET_TEST_CLASSES, OVERRIDE_2).toURI()),
                                     Arrays.asList(TestHelper.class),
                                     null,
+                                    null,
                                     null))
                             .log(bufferedLog)
                             .targetDirectoryResolver(() -> testOutput)

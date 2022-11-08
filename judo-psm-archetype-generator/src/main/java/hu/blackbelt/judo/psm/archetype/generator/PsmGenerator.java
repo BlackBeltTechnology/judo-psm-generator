@@ -1,8 +1,10 @@
 package hu.blackbelt.judo.psm.archetype.generator;
 
 import com.github.jknack.handlebars.Context;
+import com.github.jknack.handlebars.ValueResolver;
 import com.github.jknack.handlebars.io.URLTemplateLoader;
 import com.google.common.base.Charsets;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteStreams;
 import hu.blackbelt.epsilon.runtime.execution.api.Log;
@@ -125,8 +127,9 @@ public class PsmGenerator {
                 });
 
                 Context.Builder contextBuilder = Context.newBuilder(params.build());
-                contextBuilder.push(new PsmValueResolver());
-
+                for (ValueResolver valueResolver : parameter.projectGenerator.getValueResolvers()) {
+                    contextBuilder.push(valueResolver);
+                }
                 return contextBuilder;
             };
 
@@ -338,6 +341,7 @@ public class PsmGenerator {
                                                              String descriptorName,
                                                              List<URI> uris,
                                                              Collection<Class> helpers,
+                                                             Collection<ValueResolver> valueResolvers,
                                                              Function<List<URI>, URLTemplateLoader> urlTemplateLoaderFactory,
                                                              Function<List<URI>, URLResolver> urlResolverFactory) throws IOException {
 
@@ -389,7 +393,13 @@ public class PsmGenerator {
             generatorTemplates.addAll(overridedTemplates);
         }
 
-        PsmGeneratorContext psmProjectGenerator = new PsmGeneratorContext(psmModel, urlTemplateLoader, urlResolver, generatorTemplates, helpers);
+        List<ValueResolver> valueResolversPar = new ArrayList<>();
+        valueResolversPar.add(new PsmValueResolver());
+        if (valueResolvers != null) {
+            valueResolversPar.addAll(valueResolvers);
+        }
+
+        PsmGeneratorContext psmProjectGenerator = new PsmGeneratorContext(psmModel, urlTemplateLoader, urlResolver, generatorTemplates, helpers, valueResolversPar);
         return psmProjectGenerator;
     }
 

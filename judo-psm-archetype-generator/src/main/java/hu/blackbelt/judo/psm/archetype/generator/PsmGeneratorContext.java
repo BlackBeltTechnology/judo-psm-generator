@@ -2,6 +2,7 @@ package hu.blackbelt.judo.psm.archetype.generator;
 
 import com.github.jknack.handlebars.Handlebars;
 import com.github.jknack.handlebars.Helper;
+import com.github.jknack.handlebars.ValueResolver;
 import com.github.jknack.handlebars.cache.HighConcurrencyTemplateCache;
 import com.github.jknack.handlebars.cache.TemplateCache;
 import com.github.jknack.handlebars.helper.ConditionalHelpers;
@@ -14,10 +15,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -42,13 +40,17 @@ public class PsmGeneratorContext {
     @Getter
     private final Collection<Class> helpers;
 
+    @Getter
+    private final Collection<ValueResolver> valueResolvers;
+
     TemplateCache templateCache = new HighConcurrencyTemplateCache();
 
     public PsmGeneratorContext(PsmModel psmModel,
                                URLTemplateLoader templateLoader,
                                URLResolver urlResolver,
                                Collection<GeneratorTemplate> generatorTemplates,
-                               Collection<Class> helpers) {
+                               Collection<Class> helpers,
+                               Collection<ValueResolver> valueResolvers) {
 
         this.templateLoader = templateLoader;
         modelResourceSupport = PsmModelResourceSupport.psmModelResourceSupportBuilder()
@@ -57,6 +59,7 @@ public class PsmGeneratorContext {
         this.generatorTemplates = generatorTemplates;
         this.urlResolver = urlResolver;
         this.helpers = helpers;
+        this.valueResolvers = valueResolvers;
     }
 
     public Handlebars createHandlebars() {
