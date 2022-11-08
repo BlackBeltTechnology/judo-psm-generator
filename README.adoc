@@ -1,0 +1,10 @@
+judo-psm-archetype
+------------------
+
+JUDO PSM Archetype project contains a generator engine and maven plugin which can execute
+PSM model based text generation with given templates. It can be used to generate source codes,
+project skeletons or reports.
+
+For usage in a maven project check
+xref:judo-psm-archetype-maven-plugin/README.adoc [judo-psm-archetype-maven plugin documentation]
+for more information.
