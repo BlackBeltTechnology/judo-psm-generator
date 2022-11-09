@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.linesOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
-public class Northwind2UiApplicationTest {
+public class NorthwindTest {
 
     public static final String NORTHWIND_TEST = "northwind-test";
     public static final String OVERRIDE_1 = "override1";

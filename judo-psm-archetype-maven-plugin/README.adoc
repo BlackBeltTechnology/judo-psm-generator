@@ -7,7 +7,7 @@ It generates text based codes / reports from PSM model with the given templates.
 
 ## Requirements
 
-- Maven 3.6 and Java 11
+- Maven 3.8.3 and Java 11
 
 ## Installation
 
@@ -55,31 +55,7 @@ Executing a template for an PSM model
                 <type>fullstack-project</type> <!-- 4 -->
                 <destination>${basedir}/target/test-classes/psm/artifact</destination> <!-- 5 -->
                 <templateParameters> <!-- 6 -->
-                    <groupId>${project.groupId}</groupId>
-                    <artifactId>${project.artifactId}</artifactId>
-                    <version>${project.version}</version>
-
-                    <modelGroupId>hu.blackbelt.judo.tatami</modelGroupId>
-                    <modelArtifactId>judo-tatami-northwind-psm</modelArtifactId>
-                    <modelVersion>${judo-tatami-version}</modelVersion>
-
-                    <sqlDialects>hsqldb</sqlDialects>
-                    <ignoreOpenAPI>true</ignoreOpenAPI>
-                    <validateModels>false</validateModels>
-
-                    <flutterMavenPluginVersion>${flutter-maven-plugin-version}</flutterMavenPluginVersion>
-                    <structuredMapProxyVersion>${structured-map-proxy-version}</structuredMapProxyVersion>
-                    <judoDaoApiVersion>${judo-dao-api-version}</judoDaoApiVersion>
-                    <judoDispatcherApiVersion>${judo-dispatcher-api-version}</judoDispatcherApiVersion>
-                    <judoSdkCommonVersion>${judo-sdk-common-version}</judoSdkCommonVersion>
-                    <mapperVersion>${mapper-version}</mapperVersion>
-
-                    <judoTatamiVersion>${judo-tatami-version}</judoTatamiVersion>
                     <judoPlatformVersion>${judo-platform-version}</judoPlatformVersion>
-                    <judoServicesVersion>${judo-services-version}</judoServicesVersion>
-                    <judoRdbmsSchemaVersion>${judo-rdbms-schema-version}</judoRdbmsSchemaVersion>
-                    <judoTatamiClientVersion>${judo-tatami-client-version}</judoTatamiClientVersion>
-
                 </templateParameters>
                 <valueResolvers> <!-- 7 -->
                     <helper>hu.blackbelt.judo.psm.fullstack.project.archetype.ActorTypeValueResolver</helper>
@@ -134,7 +110,7 @@ only used in templates, it cannot be used in SpringEL.
 
 ## Generation
 
-For code generation handlebars templates is used. The `<project type>-project.yaml` file
+For code generation handlebars template is used. The `<project type>-project.yaml` file
 describes what template is used for that and control which parameters
 are passed and PSM model can control HOW the templates can be used.
 
@@ -147,11 +123,11 @@ All of the templates can be decorated, when the original file name is suffixed w
 defined the original one can be included with the standard fragment syntax of handlebars.
 
 ### Example:
-To decorate `main.dart.hbs,` put `main.dart.override.hbs` file. The original content can be referenced:
+To decorate `file_for_actor.test.hbs,` put `file_for_actor.test.override.hbs` file. The original content can be referenced:
 
 ```
 The original content:
-{{> flutter/lib/main.dart.hbs }}
+{{> lib/file_for_actor.test.hbs }}
 ```
 
 ## <project type>-project.yaml file
@@ -168,7 +144,7 @@ handlebars helper and SpringEL helper too.
     'lib/' +
     #path(#actorType.name) + '/' +
     'file_for_actor.test' (3)
-  templateName: flutter/lib/file_for_actor.test.hbs (4)
+  templateName: lib/file_for_actor.test.hbs (4)
   templateContext: (5)
     - name: actorTypeAsVariable
       expression: "#self"
@@ -191,7 +167,7 @@ variable.
 - overwriteExpression: false
   factoryExpression: "{#model}"
   pathExpression: "'.gitignore'"
-  templateName: flutter/gitignore
+  templateName: gitignore
   copy: true (1)
 
 ```

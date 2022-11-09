@@ -22,7 +22,7 @@ import java.util.*;
 /**
  * Generator template describes one generation properties.
  * <ul>
- *     <li>factoryExpression: A SpringEL Expression which can result a collection which will be used as list ofg generated output. The collection's elements is used
+ *     <li>factoryExpression: A SpringEL Expression which can result a collection which will be used as list of generated output. The collection's elements is used
  *     as the 'self' inside the template and pathExpression.</li>
  *     <li>pathExpression: A SpringEL Expression which is used what is the target of the generated template. It returns a string which is a relative path. When `actorTypeBased` is used,
  *     the target directory will be created as the actor target concated with actor's target directory</li>
