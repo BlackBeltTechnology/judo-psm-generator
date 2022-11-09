@@ -230,7 +230,7 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-expression</artifactId>
-            <version>5.0.0.RELEASE</version>
+            <version>5.3.23</version>
         </dependency>
 
     </dependencies>
