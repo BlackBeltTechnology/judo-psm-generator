@@ -148,59 +148,58 @@ public class PsmGenerator {
                 return templateContext;
             };
 
-            StandardEvaluationContext evaulationContext = parameter.projectGenerator.createSpringEvaulationContext();
-            evaulationContext.setVariable(ADD_DEBUG_TO_TEMPLATE, CLIENT_TEMPLATE_DEBUG);
-            evaulationContext.setVariable(ACTOR_TYPES, actorTypes);
+            StandardEvaluationContext evaulationContext = defaultStandardEvaluationContext.apply(model);
+            final TemplateEvaluator templateEvaulator;
+            try {
+                templateEvaulator = generatorTemplate.getTemplateEvalulator(
+                        parameter.projectGenerator, evaulationContext);
+            } catch (IOException e) {
+                throw new RuntimeException("Could not evaluate template", e);
+            }
 
-                final TemplateEvaluator templateEvaulator;
-                try {
-                    templateEvaulator = generatorTemplate.getTemplateEvalulator(
-                            parameter.projectGenerator, evaulationContext);
-                } catch (IOException e) {
-                    throw new RuntimeException("Could not evaluate template", e);
-                }
+            if (generatorTemplate.isActorTypeBased()) {
+                actorTypes.forEach(actorType -> {
+                    evaulationContext.setVariable(ACTOR_TYPE, actorType);
 
-                if (generatorTemplate.isActorTypeBased()) {
-                    actorTypes.forEach(actorType -> {
-                        evaulationContext.setVariable(ACTOR_TYPE, actorType);
-                        Collection processingList = new HashSet(Arrays.asList(actorType));
-                        if (templateEvaulator.getFactoryExpression() != null) {
-                            processingList = templateEvaulator.getFactoryExpressionResultOrValue(actorType, Collection.class);
-                        }
-                        templateEvaulator.getFactoryExpressionResultOrValue(processingList, Collection.class).stream().forEach(element -> {
-                            tasks.add(CompletableFuture.supplyAsync(() -> {
-                                StandardEvaluationContext templateContext = defaultStandardEvaluationContext.apply(element);
-                                templateContext.setVariable(ACTOR_TYPE, actorType);
-
-                                Context.Builder contextBuilder = defaultContextBuilder.apply(element)
-                                        .combine(ACTOR_TYPE, actorType);
-
-                                generatorTemplate.evalToContextBuilder(templateEvaulator, contextBuilder, templateContext);
-                                GeneratedFile generatedFile = generateFile(parameter.projectGenerator, templateContext, templateEvaulator, generatorTemplate, contextBuilder, log);
-                                result.generatedByActors.get(actorType).add(generatedFile);
-                                return generatedFile;
-                            }));
-                        });
-                    });
-                } else {
-                    evaulationContext.setVariable(TEMPLATE, generatorTemplate);
-                    Set iterableCollection = new HashSet(Arrays.asList(generatorTemplate));
-                    if (templateEvaulator.getTemplate() != null) {
-                        iterableCollection = actorTypes;
+                    Collection processingList = new HashSet(Arrays.asList(actorType));
+                    if (templateEvaulator.getFactoryExpression() != null) {
+                        processingList = templateEvaulator.getFactoryExpressionResultOrValue(actorType, Collection.class);
                     }
-                    templateEvaulator.getFactoryExpressionResultOrValue(iterableCollection, Collection.class).stream().forEach(element -> {
+                    templateEvaulator.getFactoryExpressionResultOrValue(processingList, Collection.class).stream().forEach(element -> {
                         tasks.add(CompletableFuture.supplyAsync(() -> {
-
                             StandardEvaluationContext templateContext = defaultStandardEvaluationContext.apply(element);
-                            Context.Builder contextBuilder = defaultContextBuilder.apply(element);
+                            templateContext.setVariable(ACTOR_TYPE, actorType);
 
-                            generatorTemplate.evalToContextBuilder(templateEvaulator, contextBuilder, evaulationContext);
+                            Context.Builder contextBuilder = defaultContextBuilder.apply(element)
+                                    .combine(ACTOR_TYPE, actorType);
+
+                            generatorTemplate.evalToContextBuilder(templateEvaulator, contextBuilder, templateContext);
                             GeneratedFile generatedFile = generateFile(parameter.projectGenerator, templateContext, templateEvaulator, generatorTemplate, contextBuilder, log);
-                            result.generated.add(generatedFile);
+                            result.generatedByActors.get(actorType).add(generatedFile);
                             return generatedFile;
                         }));
                     });
+                });
+            } else {
+                evaulationContext.setVariable(TEMPLATE, generatorTemplate);
+                Set iterableCollection = new HashSet(Arrays.asList(generatorTemplate));
+
+                if (templateEvaulator.getTemplate() != null) {
+                    iterableCollection = actorTypes;
                 }
+                templateEvaulator.getFactoryExpressionResultOrValue(iterableCollection, Collection.class).stream().forEach(element -> {
+                    tasks.add(CompletableFuture.supplyAsync(() -> {
+
+                        StandardEvaluationContext templateContext = defaultStandardEvaluationContext.apply(element);
+                        Context.Builder contextBuilder = defaultContextBuilder.apply(element);
+
+                        generatorTemplate.evalToContextBuilder(templateEvaulator, contextBuilder, evaulationContext);
+                        GeneratedFile generatedFile = generateFile(parameter.projectGenerator, templateContext, templateEvaulator, generatorTemplate, contextBuilder, log);
+                        result.generated.add(generatedFile);
+                        return generatedFile;
+                    }));
+                });
+            }
         });
 
         allFuture(tasks).get();
