@@ -3,15 +3,15 @@
     <pluginExecution>
       <pluginExecutionFilter>
         <goals>
-          <goal>psm-default-workflow</goal>
+          <goal>generate</goal>
         </goals>
       </pluginExecutionFilter>
-      <action>
-        <execute>
-          <runOnIncremental>false</runOnIncremental>
-          <runOnConfiguration>true</runOnConfiguration>
-        </execute>
-      </action>    
+        <action>
+          <execute>
+            <runOnIncremental>true</runOnIncremental>
+            <runOnConfiguration>true</runOnConfiguration>
+          </execute>
+        </action>
       </pluginExecution>
   </pluginExecutions>
 </lifecycleMappingMetadata>

@@ -1,4 +1,4 @@
-package hu.blackbelt.judo.tatami.client.workflow.maven.plugin;
+package hu.blackbelt.judo.tatami.psm.workflow.maven.plugin;
 
 import com.github.jknack.handlebars.ValueResolver;
 import com.google.common.io.Files;
@@ -426,6 +426,20 @@ public class GenerateProjectMojo extends AbstractMojo {
                         }
                     } catch (Exception e) {
                         getLog().error("Could not load value resolver class: " + valueResolverClass);
+                    }
+                }
+                for (Class helper : resolvedHelpers) {
+                    if (ValueResolver.class.isAssignableFrom(helper)) {
+                        try {
+                            Object o = helper.getDeclaredConstructor().newInstance();
+                            if (o instanceof ValueResolver) {
+                                resolvedValueResolvers.add((ValueResolver) o);
+                            } else {
+                                getLog().error("Could not instantiate value resolver class: " + helper.getName());
+                            }
+                        } catch (Exception e) {
+                            getLog().error("Could not load value resolver class: " + helper.getName());
+                        }
                     }
                 }
             }

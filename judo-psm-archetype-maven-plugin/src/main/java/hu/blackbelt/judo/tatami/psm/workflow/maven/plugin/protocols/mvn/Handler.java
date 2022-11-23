@@ -1,4 +1,4 @@
-package hu.blackbelt.judo.tatami.client.workflow.maven.plugin.protocols.mvn;
+package hu.blackbelt.judo.tatami.psm.workflow.maven.plugin.protocols.mvn;
 
 import java.io.IOException;
 import java.net.URL;

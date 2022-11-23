@@ -1,4 +1,4 @@
-package hu.blackbelt.judo.tatami.client.workflow.maven.plugin;
+package hu.blackbelt.judo.tatami.psm.workflow.maven.plugin;
 
 import com.github.jknack.handlebars.io.TemplateSource;
 import hu.blackbelt.judo.psm.archetype.generator.ChainedURLTemplateLoader;

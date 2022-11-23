@@ -1,6 +1,7 @@
 package hu.blackbelt.judo.psm.archetype.generator;
 
 import com.github.jknack.handlebars.Context;
+import com.github.jknack.handlebars.Helper;
 import com.github.jknack.handlebars.ValueResolver;
 import com.github.jknack.handlebars.io.URLTemplateLoader;
 import com.google.common.base.Charsets;
@@ -127,8 +128,8 @@ public class PsmGenerator {
                 });
 
                 Context.Builder contextBuilder = Context.newBuilder(params.build());
-                for (ValueResolver valueResolver : parameter.projectGenerator.getValueResolvers()) {
-                    contextBuilder.push(valueResolver);
+                if (parameter.projectGenerator.getValueResolvers().size() > 0) {
+                    contextBuilder.push(parameter.projectGenerator.getValueResolvers().toArray(ValueResolver[]::new));
                 }
                 return contextBuilder;
             };
