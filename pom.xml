@@ -1,12 +1,12 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>hu.blackbelt.judo.archetype</groupId>
-    <artifactId>judo-psm-archetype-parent</artifactId>
+    <groupId>hu.blackbelt.judo.generator</groupId>
+    <artifactId>judo-psm-generator-parent</artifactId>
     <version>${revision}</version>
     <packaging>pom</packaging>
 
-    <name>JUDO PSM Archetype parent</name>
-    <description>Parent project of JUDO Tatami Archetype. Archetypoe helps create project skeletons.</description>
+    <name>JUDO PSM Generator parent</name>
+    <description>Parent project of JUDO Generator. Generator helps create project skeletons.</description>
 
     <developers>
         <developer>
@@ -23,8 +23,8 @@
         <revision>1.0.0-SNAPSHOT</revision>
         <maven>3.8.3</maven>
 
-        <project-shortname>judo-psm-archetype</project-shortname>
-        <project-repositoryId>BlackBeltTechnology/judo-tatami-archetype</project-repositoryId>
+        <project-shortname>judo-psm-generator</project-shortname>
+        <project-repositoryId>BlackBeltTechnology/judo-psm-generator</project-repositoryId>
 
         <osgi-default-import>
             org.osgi.framework;version="[1.8,2.0)",
@@ -386,9 +386,9 @@
                 </property>
             </activation>
             <modules>
-                <module>judo-psm-archetype-generator</module>
-                <module>judo-psm-archetype-maven-plugin</module>
-                <module>judo-psm-archetype-maven-plugin-test</module>
+                <module>judo-psm-generator-engine</module>
+                <module>judo-psm-generator-maven-plugin</module>
+                <module>judo-psm-generator-maven-plugin-test</module>
             </modules>
         </profile>
 
