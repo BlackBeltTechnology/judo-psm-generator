@@ -60,6 +60,7 @@ Executing a template for an PSM model
                 <valueResolvers> <!-- 7 -->
                     <helper>hu.blackbelt.judo.psm.fullstack.project.archetype.ActorTypeValueResolver</helper>
                 </valueResolvers>
+                <handlebarsContextAccessor>hu.blackbelt.judo.psm.fullstack.project.archetype.ActorTypeValueResolver</handlebarsContextAccessor> <!-- 8 -->
 
             </configuration>
         </execution>
@@ -107,6 +108,10 @@ templates woth the same name.
 
 <7> ValueHelpers. It must implement `com.github.jknack.handlebars.ValueResolver`. It can be used to extend types with methods. These
 only used in templates, it cannot be used in SpringEL.
+
+<8> HandlebarsContextAccessor. It can be used to store Handlebars Context vhich can be accessed by type resolvers. It have to implement
+the `public static void bindContext(com.github.jknack.handlebars.Context)` method. Recommended to store the context in ThreadLocal, because
+templating is running in multiple threads.
 
 ## Generation
 
