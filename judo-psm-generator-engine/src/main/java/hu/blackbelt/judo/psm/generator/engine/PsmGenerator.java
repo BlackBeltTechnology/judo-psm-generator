@@ -184,12 +184,13 @@ public class PsmGenerator {
     }
 
 
-    private static GeneratedFile generateFile(final PsmGeneratorContext generatorContext,
-                                              final StandardEvaluationContext evaluationContext,
-                                              final TemplateEvaluator templateEvaulator,
-                                              final GeneratorTemplate generatorTemplate,
-                                              final Context.Builder contextBuilder,
-                                              final Log log) {
+    private static GeneratedFile generateFile(
+            final PsmGeneratorContext generatorContext,
+            final StandardEvaluationContext evaluationContext,
+            final TemplateEvaluator templateEvaulator,
+            final GeneratorTemplate generatorTemplate,
+            final Context.Builder contextBuilder,
+            final Log log) {
 
         GeneratedFile generatedFile = new GeneratedFile();
         generatedFile.setPath(templateEvaulator.getPathExpression().getValue(evaluationContext, String.class));
