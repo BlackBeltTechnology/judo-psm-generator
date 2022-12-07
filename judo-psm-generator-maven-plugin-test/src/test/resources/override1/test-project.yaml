@@ -1,7 +1,8 @@
-- pathExpression: "#actorType.name + '/actorname'"
-  templateName: test1/actorname.hbs
-  actorTypeBased: true
+templates:
+  - pathExpression: "#actorType.name + '/actorname'"
+    templateName: test1/actorname.hbs
+    actorTypeBased: true
 
-- pathExpression: "#actorType.name + '/actornameOverride1'"
-  templateName: test1/actornameOverride1.hbs
-  actorTypeBased: true
+  - pathExpression: "#actorType.name + '/actornameOverride1'"
+    templateName: test1/actornameOverride1.hbs
+    actorTypeBased: true
