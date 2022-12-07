@@ -39,6 +39,8 @@ import java.util.*;
 @Builder(builderMethodName = "generatorTemplateBuilder")
 public class GeneratorTemplate {
 
+	private String name;
+
 	private String factoryExpression;
 	private String pathExpression;
 
@@ -49,7 +51,7 @@ public class GeneratorTemplate {
 	private boolean actorTypeBased = false;
 
 	@Builder.Default
-	private Collection<Expression> templateContext = new HashSet();
+	private Collection<TemplateSpringELExpression> templateContext = new HashSet();
 
 	@Builder.Default
 	@Getter
@@ -68,14 +70,6 @@ public class GeneratorTemplate {
 	}
 
 
-	@AllArgsConstructor
-	@NoArgsConstructor
-	@Getter
-	@Setter
-	public static class Expression {
-		private String name;
-		private String expression;
-	}
 	public static Collection<GeneratorTemplate> loadYamlURL(URL yaml) throws IOException {
 		ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 		List<GeneratorTemplate> templates = new ArrayList<>();
@@ -96,13 +90,13 @@ public class GeneratorTemplate {
 		return new TemplateEvaluator(projectGenerator, this, standardEvaluationContext);
 	}
 
-	public void evalToContextBuilder(TemplateEvaluator templateEvaulator, Context.Builder contextBuilder, StandardEvaluationContext templateExpressionContext) {
+	public void evalToContextBuilder(TemplateEvaluator templateEvaluator, Context.Builder contextBuilder, StandardEvaluationContext templateExpressionContext) {
 		templateContext.stream().forEach(ctx -> {
 
-			Class type = templateEvaulator.getTemplateExpressions().get(ctx.getName()).getValueType(templateExpressionContext);
+			Class type = templateEvaluator.getTemplateExpressions().get(ctx.getName()).getValueType(templateExpressionContext);
 			contextBuilder.combine(ctx.getName(),
-					templateEvaulator.getTemplateExpressions().get(ctx.getName()).getValue(templateExpressionContext,
-							templateEvaulator.getTemplateExpressions().get(ctx.getName()).getValue(templateExpressionContext, type)));
+					templateEvaluator.getTemplateExpressions().get(ctx.getName()).getValue(templateExpressionContext,
+							templateEvaluator.getTemplateExpressions().get(ctx.getName()).getValue(templateExpressionContext, type)));
 		});
 	}
 
