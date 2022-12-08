@@ -54,15 +54,16 @@ public class NorthwindTest {
         psmModel = new Demo().fullDemo();
         File testOutput =  new File(TARGET_TEST_CLASSES, NORTHWIND_TEST);
         try (Log bufferedLog = new BufferedSlf4jLogger(log)) {
-            PsmGenerator.executePsmGenerationToDirectory(PsmGenerator.PsmGeneratorParameter.psmGeneratorParameter()
-                            .projectGenerator(PsmGenerator.createGeneratorContext(psmModel, "test-project",
-                                    Arrays.asList(
-                                            new File(TARGET_TEST_CLASSES, OVERRIDE_1).toURI(),
-                                            new File(TARGET_TEST_CLASSES, OVERRIDE_2).toURI()),
-                                    Arrays.asList(TestHelper.class),
-                                    null,
-                                    null,
-                                    null))
+            PsmGenerator.generateToDirectory(PsmGeneratorParameter.psmGeneratorParameter()
+                            .generatorContext(PsmGenerator.createGeneratorContext(
+                                    PsmGenerator.CreateGeneratorContextArgument.builder()
+                                            .psmModel(psmModel)
+                                            .descriptorName("test-project")
+                                            .uris(Arrays.asList(
+                                                    new File(TARGET_TEST_CLASSES, OVERRIDE_1).toURI(),
+                                                    new File(TARGET_TEST_CLASSES, OVERRIDE_2).toURI()))
+                                            .helpers(Arrays.asList(TestHelper.class))
+                                            .build()))
                             .log(bufferedLog)
                             .targetDirectoryResolver(() -> testOutput)
                             .actorTypeTargetDirectoryResolver( a -> testOutput)

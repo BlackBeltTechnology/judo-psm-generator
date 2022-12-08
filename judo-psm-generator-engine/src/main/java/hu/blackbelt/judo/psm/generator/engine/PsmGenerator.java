@@ -11,11 +11,14 @@ import hu.blackbelt.epsilon.runtime.execution.impl.BufferedSlf4jLogger;
 import hu.blackbelt.judo.meta.psm.accesspoint.ActorType;
 import hu.blackbelt.judo.meta.psm.namespace.Model;
 import hu.blackbelt.judo.meta.psm.runtime.PsmModel;
+import hu.blackbelt.judo.meta.psm.support.PsmModelResourceSupport;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.net.URL;
 import java.util.*;
@@ -44,42 +47,12 @@ public class PsmGenerator {
     public static final String ACTOR_TYPE = "actorType";
     public static final String MODEL = "model";
 
-    @Builder(builderMethodName = "psmGeneratorParameter")
-    public static final class PsmGeneratorParameter {
-        PsmGeneratorContext projectGenerator;
 
-        @Builder.Default
-        Predicate<ActorType> actorTypePredicate = a -> true;
-
-        @NonNull
-        Function<ActorType, File> actorTypeTargetDirectoryResolver;
-
-        @NonNull
-        Supplier<File> targetDirectoryResolver;
-
-        Log log;
-
-        @Builder.Default
-        Supplier<Map<String, ?>> extraContextVariables = () -> ImmutableMap.of();
+    public static PsmGeneratorResult execute(PsmGeneratorParameter.PsmGeneratorParameterBuilder builder) throws Exception {
+        return execute(builder.build());
     }
 
-    @Builder(builderMethodName = "psmGeneratorResult")
-    @Getter
-    public static final class PsmGeneratorResult {
-
-        @Builder.Default
-        Map<ActorType, Collection<GeneratedFile>> generatedByActors = new ConcurrentHashMap<>();
-
-        @Builder.Default
-        Collection<GeneratedFile> generated = new CopyOnWriteArrayList<>();
-    }
-
-
-    public static PsmGeneratorResult executePsmGeneration(PsmGeneratorParameter.PsmGeneratorParameterBuilder builder) throws Exception {
-        return executePsmGeneration(builder.build());
-    }
-
-    public static PsmGeneratorResult executePsmGeneration(PsmGeneratorParameter parameter) throws Exception {
+    public static PsmGeneratorResult execute(PsmGeneratorParameter parameter) throws Exception {
         final AtomicBoolean loggerToBeClosed = new AtomicBoolean(false);
         Log log = Objects.requireNonNullElseGet(parameter.log,
                                                 () -> {
@@ -87,7 +60,7 @@ public class PsmGenerator {
                                                     return new BufferedSlf4jLogger(PsmGenerator.log);
                                                 });
         try {
-            return getPsmGeneratorResult(parameter, log);
+            return execute(parameter, log);
         } finally {
             if (loggerToBeClosed.get()) {
                 log.close();
@@ -95,22 +68,26 @@ public class PsmGenerator {
         }
     }
 
-    private static PsmGeneratorResult getPsmGeneratorResult(PsmGeneratorParameter parameter, Log log) throws InterruptedException, ExecutionException {
+    private static PsmGeneratorResult execute(PsmGeneratorParameter parameter, Log log) throws InterruptedException, ExecutionException {
         PsmGeneratorResult result = PsmGeneratorResult.psmGeneratorResult().build();
 
-        parameter.projectGenerator.getModelResourceSupport().getStreamOfPsmAccesspointActorType().forEach(
+        parameter.generatorContext.getModelResourceSupport().getStreamOfPsmAccesspointActorType().forEach(
                 app -> { result.generatedByActors.put(app, ConcurrentHashMap.newKeySet()); });
 
-        Set<ActorType> actorTypes = parameter.projectGenerator.getModelResourceSupport().getStreamOfPsmAccesspointActorType()
+        Set<ActorType> actorTypes = parameter.generatorContext.getModelResourceSupport().getStreamOfPsmAccesspointActorType()
                 .filter(parameter.actorTypePredicate).collect(Collectors.toSet());
 
-        Model model = parameter.projectGenerator.getModelResourceSupport().getStreamOfPsmNamespaceModel().findFirst().get();
+        Model model = parameter.generatorContext.getModelResourceSupport().getStreamOfPsmNamespaceModel().findFirst()
+                .orElseThrow(() -> new RuntimeException("Could not find the model entry"));
 
         List<CompletableFuture<GeneratedFile>> tasks = new ArrayList<>();
 
-        parameter.projectGenerator.getGeneratorTemplates().stream().forEach(generatorTemplate -> {
+        parameter.generatorContext.getGeneratorModel().getTemplates().stream().forEach(generatorTemplate -> {
 
-            Function<Object, Context.Builder> defaultContextBuilder = o -> {
+            // Handlebars context builder
+            // It creates parameters accessible within templates.
+            // It returns the function, the context creation itself is called when template is processed.
+            Function<Object, Context.Builder> defaultHandlebarsContextBuilder = o -> {
                 ImmutableMap.Builder params = ImmutableMap.<String, Object>builder()
                     .put(ADD_DEBUG_TO_TEMPLATE, CLIENT_TEMPLATE_DEBUG)
                     .put(ACTOR_TYPES, actorTypes)
@@ -126,14 +103,15 @@ public class PsmGenerator {
                 });
 
                 Context.Builder contextBuilder = Context.newBuilder(params.build());
-                if (parameter.projectGenerator.getValueResolvers().size() > 0) {
-                    contextBuilder.push(parameter.projectGenerator.getValueResolvers().toArray(ValueResolver[]::new));
+                if (parameter.generatorContext.getValueResolvers().size() > 0) {
+                    contextBuilder.push(parameter.generatorContext.getValueResolvers().toArray(ValueResolver[]::new));
                 }
                 return contextBuilder;
             };
 
-            Function<Object, StandardEvaluationContext> defaultStandardEvaluationContext = o -> {
-                StandardEvaluationContext templateContext = parameter.projectGenerator.createSpringEvaulationContext();
+            // SpringEL Context builder
+            Function<Object, StandardEvaluationContext> defaultSpringELContextProvider = o -> {
+                StandardEvaluationContext templateContext = parameter.generatorContext.createSpringEvaluationContext();
                 templateContext.setVariable(ADD_DEBUG_TO_TEMPLATE, CLIENT_TEMPLATE_DEBUG);
                 templateContext.setVariable(ACTOR_TYPES, actorTypes);
                 templateContext.setVariable(TEMPLATE, generatorTemplate);
@@ -147,11 +125,11 @@ public class PsmGenerator {
                 return templateContext;
             };
 
-            StandardEvaluationContext evaulationContext = defaultStandardEvaluationContext.apply(model);
+            StandardEvaluationContext evaulationContext = defaultSpringELContextProvider.apply(model);
             final TemplateEvaluator templateEvaulator;
             try {
                 templateEvaulator = generatorTemplate.getTemplateEvalulator(
-                        parameter.projectGenerator, evaulationContext);
+                        parameter.generatorContext, evaulationContext);
             } catch (IOException e) {
                 throw new RuntimeException("Could not evaluate template", e);
             }
@@ -166,14 +144,14 @@ public class PsmGenerator {
                     }
                     templateEvaulator.getFactoryExpressionResultOrValue(processingList, Collection.class).stream().forEach(element -> {
                         tasks.add(CompletableFuture.supplyAsync(() -> {
-                            StandardEvaluationContext templateContext = defaultStandardEvaluationContext.apply(element);
+                            StandardEvaluationContext templateContext = defaultSpringELContextProvider.apply(element);
                             templateContext.setVariable(ACTOR_TYPE, actorType);
 
-                            Context.Builder contextBuilder = defaultContextBuilder.apply(element)
+                            Context.Builder contextBuilder = defaultHandlebarsContextBuilder.apply(element)
                                     .combine(ACTOR_TYPE, actorType);
 
                             generatorTemplate.evalToContextBuilder(templateEvaulator, contextBuilder, templateContext);
-                            GeneratedFile generatedFile = generateFile(parameter.projectGenerator, templateContext, templateEvaulator, generatorTemplate, contextBuilder, log);
+                            GeneratedFile generatedFile = generateFile(parameter.generatorContext, templateContext, templateEvaulator, generatorTemplate, contextBuilder, log);
                             result.generatedByActors.get(actorType).add(generatedFile);
                             return generatedFile;
                         }));
@@ -189,11 +167,11 @@ public class PsmGenerator {
                 templateEvaulator.getFactoryExpressionResultOrValue(iterableCollection, Collection.class).stream().forEach(element -> {
                     tasks.add(CompletableFuture.supplyAsync(() -> {
 
-                        StandardEvaluationContext templateContext = defaultStandardEvaluationContext.apply(element);
-                        Context.Builder contextBuilder = defaultContextBuilder.apply(element);
+                        StandardEvaluationContext templateContext = defaultSpringELContextProvider.apply(element);
+                        Context.Builder contextBuilder = defaultHandlebarsContextBuilder.apply(element);
 
                         generatorTemplate.evalToContextBuilder(templateEvaulator, contextBuilder, evaulationContext);
-                        GeneratedFile generatedFile = generateFile(parameter.projectGenerator, templateContext, templateEvaulator, generatorTemplate, contextBuilder, log);
+                        GeneratedFile generatedFile = generateFile(parameter.generatorContext, templateContext, templateEvaulator, generatorTemplate, contextBuilder, log);
                         result.generated.add(generatedFile);
                         return generatedFile;
                     }));
@@ -201,17 +179,18 @@ public class PsmGenerator {
             }
         });
 
-        allFuture(tasks).get();
+        StreamHelper.performFutures(tasks);
         return result;
     }
 
 
-    private static GeneratedFile generateFile(final PsmGeneratorContext projectGenerator,
-                                              final StandardEvaluationContext evaluationContext,
-                                              final TemplateEvaluator templateEvaulator,
-                                              final GeneratorTemplate generatorTemplate,
-                                              final Context.Builder contextBuilder,
-                                              final Log log) {
+    private static GeneratedFile generateFile(
+            final PsmGeneratorContext generatorContext,
+            final StandardEvaluationContext evaluationContext,
+            final TemplateEvaluator templateEvaulator,
+            final GeneratorTemplate generatorTemplate,
+            final Context.Builder contextBuilder,
+            final Log log) {
 
         GeneratedFile generatedFile = new GeneratedFile();
         generatedFile.setPath(templateEvaulator.getPathExpression().getValue(evaluationContext, String.class));
@@ -221,9 +200,9 @@ public class PsmGenerator {
             if (location.startsWith("/")) {
                 location =  location.substring(1);
             }
-            location = projectGenerator.getTemplateLoader().resolve(location);
+            location = generatorContext.getTemplateLoader().resolve(location);
             try {
-                URL resource = projectGenerator.getUrlResolver().getResource(location);
+                URL resource = generatorContext.getUrlResolver().getResource(location);
                 if (resource != null) {
                     generatedFile.setContent(ByteStreams.toByteArray(resource.openStream()));
                 }  else {
@@ -235,8 +214,22 @@ public class PsmGenerator {
         } else {
             StringWriter sourceFile = new StringWriter();
             try {
-                templateEvaulator.getTemplate().apply(contextBuilder.build(), sourceFile);
-            } catch (IOException e) {
+                Context context = contextBuilder.build();
+                if (generatorContext.getHandlebarsContextAccessor() != null) {
+                    Arrays.stream(generatorContext.getHandlebarsContextAccessor().getMethods()).filter(m ->
+                                    m.getName().equals("bindContext") &&
+                                            Modifier.isPublic(m.getModifiers()) &&
+                                            Modifier.isStatic(m.getModifiers()) &&
+                                            m.getParameters().length == 1 &&
+                                            Context.class.isAssignableFrom(m.getParameters()[0].getType())
+                            ).findFirst()
+                            .orElseThrow(() -> new IllegalArgumentException("The 'handleabarsContextAccessor' does not " +
+                                    "have 'public static void bindContext(com.github.jknack.handlebars,Context)' method"))
+                            .invoke(null, context);
+
+                }
+                templateEvaulator.getTemplate().apply(context, sourceFile);
+            } catch (IllegalAccessException | InvocationTargetException | IOException e) {
                 log.error("Could not generate template: " + generatedFile.getPath());
             }
             generatedFile.setContent(sourceFile.toString().getBytes(Charsets.UTF_8));
@@ -282,11 +275,11 @@ public class PsmGenerator {
     }
 
 
-    public static void executePsmGenerationToDirectory(PsmGeneratorParameter.PsmGeneratorParameterBuilder builder) throws Exception {
-        executePsmGenerationToDirectory(builder.build());
+    public static void generateToDirectory(PsmGeneratorParameter.PsmGeneratorParameterBuilder builder) throws Exception {
+        generateToDirectory(builder.build());
     }
 
-    public static void executePsmGenerationToDirectory(PsmGeneratorParameter parameter) throws Exception {
+    public static void generateToDirectory(PsmGeneratorParameter parameter) throws Exception {
         final AtomicBoolean loggerToBeClosed = new AtomicBoolean(false);
         Log log = Objects.requireNonNullElseGet(parameter.log,
                                                 () -> {
@@ -295,7 +288,7 @@ public class PsmGenerator {
                                                 });
 
         try {
-            PsmGeneratorResult result = executePsmGeneration(parameter);
+            PsmGeneratorResult result = execute(parameter);
             result.generatedByActors
                     .entrySet()
                     .stream()
@@ -325,79 +318,80 @@ public class PsmGenerator {
     }
 
 
-    public static <T> CompletableFuture<List<T>> allFuture(List<CompletableFuture<T>> futures) {
-        CompletableFuture[] cfs = futures.toArray(new CompletableFuture[futures.size()]);
-
-        return CompletableFuture.allOf(cfs)
-                .thenApply(ignored -> futures.stream()
-                        .map(CompletableFuture::join)
-                        .collect(Collectors.toList())
-                );
+    @Builder
+    @Getter
+    public static final class CreateGeneratorContextArgument {
+        PsmModel psmModel;
+        String descriptorName;
+        @Builder.Default
+        List<URI> uris = null;
+        @Builder.Default
+        Collection<Class> helpers = null;
+        @Builder.Default
+        Collection<ValueResolver> valueResolvers = null;
+        @Builder.Default
+        Class handlebarsContextAccessor = null;
+        @Builder.Default
+        Function<List<URI>, URLTemplateLoader> urlTemplateLoaderFactory = null;
+        @Builder.Default
+        Function<List<URI>, URLResolver> urlResolverFactory = null;
     }
 
-    public static PsmGeneratorContext createGeneratorContext(PsmModel psmModel,
-                                                             String descriptorName,
-                                                             List<URI> uris,
-                                                             Collection<Class> helpers,
-                                                             Collection<ValueResolver> valueResolvers,
-                                                             Function<List<URI>, URLTemplateLoader> urlTemplateLoaderFactory,
-                                                             Function<List<URI>, URLResolver> urlResolverFactory) throws IOException {
+    public static PsmGeneratorContext createGeneratorContext(CreateGeneratorContextArgument args) throws IOException {
+
+        GeneratorModel effectiveModel = GeneratorModel.generatorModelBuilder().build();
 
         URLTemplateLoader urlTemplateLoader = null;
         URLResolver urlResolver = null;
 
-        if (urlTemplateLoaderFactory != null) {
-            urlTemplateLoader = urlTemplateLoaderFactory.apply(uris);
-            if (urlResolverFactory != null) {
-                urlResolver = urlResolverFactory.apply(uris);
+        if (args.urlTemplateLoaderFactory != null) {
+            urlTemplateLoader = args.urlTemplateLoaderFactory.apply(args.uris);
+            if (args.urlResolverFactory != null) {
+                urlResolver = args.urlResolverFactory.apply(args.uris);
             } else {
                 throw new IllegalStateException("Could not determinate URLResolver");
             }
         } else {
-            urlTemplateLoader = ChainedURLTemplateLoader.createFromURIs(uris);
-            if (urlResolverFactory != null) {
-                urlResolver = urlResolverFactory.apply(uris);
+            urlTemplateLoader = ChainedURLTemplateLoader.createFromURIs(args.uris);
+            if (args.urlResolverFactory != null) {
+                urlResolver = args.urlResolverFactory.apply(args.uris);
             } else {
                 urlResolver = (URLResolver) urlTemplateLoader;
             }
         }
 
-        if (uris == null || uris.isEmpty()) {
+        if (args.uris == null || args.uris.isEmpty()) {
             throw new IllegalArgumentException("Minimum one URI is mandatory for templates");
         }
 
-        URI rootUri = uris.get(0);
+        URI rootUri = args.uris.get(0);
         List<URI> scriptUris = new ArrayList<>();
-        for (URI uri : uris) {
+        for (URI uri : args.uris) {
             if (uri != rootUri) {
                 scriptUris.add(uri);
             }
         }
 
-        List<GeneratorTemplate> generatorTemplates = new ArrayList<>();
-        generatorTemplates.addAll(GeneratorTemplate.loadYamlURL(UriHelper.calculateRelativeURI(rootUri, descriptorName + YAML).normalize().toURL()));
-        if (generatorTemplates.isEmpty()) {
-            throw new IllegalArgumentException("No template loaded.");
-        }
-
+        GeneratorModel generatorModel = GeneratorModel.loadYamlURL(UriHelper.calculateRelativeURI(rootUri, args.descriptorName + YAML).normalize().toURL());
         for (URI uri : scriptUris) {
-            Collection<GeneratorTemplate> overridedTemplates =
-                    GeneratorTemplate.loadYamlURL(UriHelper.calculateRelativeURI(uri, descriptorName + YAML).normalize().toURL());
-            Collection<GeneratorTemplate> replaceableTemplates = new HashSet<>();
-            generatorTemplates.forEach(t -> {
-                overridedTemplates.stream().filter(o -> o.getTemplateName().equals(t.getTemplateName())).forEach(f -> replaceableTemplates.add(f));
-            });
-            generatorTemplates.removeAll(replaceableTemplates);
-            generatorTemplates.addAll(overridedTemplates);
+            GeneratorModel overridedGeneratorModel = GeneratorModel.loadYamlURL(UriHelper.calculateRelativeURI(uri, args.descriptorName + YAML).normalize().toURL());
+            if (overridedGeneratorModel != null) {
+                generatorModel.overrideTemplates(overridedGeneratorModel.getTemplates());
+            }
         }
 
         List<ValueResolver> valueResolversPar = new ArrayList<>();
         valueResolversPar.add(new PsmValueResolver());
-        if (valueResolvers != null) {
-            valueResolversPar.addAll(valueResolvers);
+        if (args.valueResolvers != null) {
+            valueResolversPar.addAll(args.valueResolvers);
         }
 
-        PsmGeneratorContext psmProjectGenerator = new PsmGeneratorContext(psmModel, urlTemplateLoader, urlResolver, generatorTemplates, helpers, valueResolversPar);
+        Collection<Class> helpersPar = new ArrayList<>();
+        if (args.helpers != null) {
+            helpersPar.addAll(args.helpers);
+        }
+
+        PsmGeneratorContext psmProjectGenerator = new PsmGeneratorContext(args.psmModel, urlTemplateLoader, urlResolver, generatorModel, helpersPar, valueResolversPar, args.handlebarsContextAccessor);
         return psmProjectGenerator;
     }
 
