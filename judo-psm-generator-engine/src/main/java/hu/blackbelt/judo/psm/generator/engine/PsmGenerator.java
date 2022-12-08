@@ -317,52 +317,64 @@ public class PsmGenerator {
         return new ByteArrayInputStream(generatedZip.toByteArray());
     }
 
-    public static PsmGeneratorContext createGeneratorContext(
-            PsmModel psmModel,
-            String descriptorName,
-            List<URI> uris,
-            Collection<Class> helpers,
-            Collection<ValueResolver> valueResolvers,
-            Class handlebarsContextAccessor,
-            Function<List<URI>, URLTemplateLoader> urlTemplateLoaderFactory,
-            Function<List<URI>, URLResolver> urlResolverFactory) throws IOException {
+
+    @Builder
+    @Getter
+    public static final class CreateGeneratorContextArgument {
+        PsmModel psmModel;
+        String descriptorName;
+        @Builder.Default
+        List<URI> uris = null;
+        @Builder.Default
+        Collection<Class> helpers = null;
+        @Builder.Default
+        Collection<ValueResolver> valueResolvers = null;
+        @Builder.Default
+        Class handlebarsContextAccessor = null;
+        @Builder.Default
+        Function<List<URI>, URLTemplateLoader> urlTemplateLoaderFactory = null;
+        @Builder.Default
+        Function<List<URI>, URLResolver> urlResolverFactory = null;
+    }
+
+    public static PsmGeneratorContext createGeneratorContext(CreateGeneratorContextArgument args) throws IOException {
 
         GeneratorModel effectiveModel = GeneratorModel.generatorModelBuilder().build();
 
         URLTemplateLoader urlTemplateLoader = null;
         URLResolver urlResolver = null;
 
-        if (urlTemplateLoaderFactory != null) {
-            urlTemplateLoader = urlTemplateLoaderFactory.apply(uris);
-            if (urlResolverFactory != null) {
-                urlResolver = urlResolverFactory.apply(uris);
+        if (args.urlTemplateLoaderFactory != null) {
+            urlTemplateLoader = args.urlTemplateLoaderFactory.apply(args.uris);
+            if (args.urlResolverFactory != null) {
+                urlResolver = args.urlResolverFactory.apply(args.uris);
             } else {
                 throw new IllegalStateException("Could not determinate URLResolver");
             }
         } else {
-            urlTemplateLoader = ChainedURLTemplateLoader.createFromURIs(uris);
-            if (urlResolverFactory != null) {
-                urlResolver = urlResolverFactory.apply(uris);
+            urlTemplateLoader = ChainedURLTemplateLoader.createFromURIs(args.uris);
+            if (args.urlResolverFactory != null) {
+                urlResolver = args.urlResolverFactory.apply(args.uris);
             } else {
                 urlResolver = (URLResolver) urlTemplateLoader;
             }
         }
 
-        if (uris == null || uris.isEmpty()) {
+        if (args.uris == null || args.uris.isEmpty()) {
             throw new IllegalArgumentException("Minimum one URI is mandatory for templates");
         }
 
-        URI rootUri = uris.get(0);
+        URI rootUri = args.uris.get(0);
         List<URI> scriptUris = new ArrayList<>();
-        for (URI uri : uris) {
+        for (URI uri : args.uris) {
             if (uri != rootUri) {
                 scriptUris.add(uri);
             }
         }
 
-        GeneratorModel generatorModel = GeneratorModel.loadYamlURL(UriHelper.calculateRelativeURI(rootUri, descriptorName + YAML).normalize().toURL());
+        GeneratorModel generatorModel = GeneratorModel.loadYamlURL(UriHelper.calculateRelativeURI(rootUri, args.descriptorName + YAML).normalize().toURL());
         for (URI uri : scriptUris) {
-            GeneratorModel overridedGeneratorModel = GeneratorModel.loadYamlURL(UriHelper.calculateRelativeURI(uri, descriptorName + YAML).normalize().toURL());
+            GeneratorModel overridedGeneratorModel = GeneratorModel.loadYamlURL(UriHelper.calculateRelativeURI(uri, args.descriptorName + YAML).normalize().toURL());
             if (overridedGeneratorModel != null) {
                 generatorModel.overrideTemplates(overridedGeneratorModel.getTemplates());
             }
@@ -370,11 +382,16 @@ public class PsmGenerator {
 
         List<ValueResolver> valueResolversPar = new ArrayList<>();
         valueResolversPar.add(new PsmValueResolver());
-        if (valueResolvers != null) {
-            valueResolversPar.addAll(valueResolvers);
+        if (args.valueResolvers != null) {
+            valueResolversPar.addAll(args.valueResolvers);
         }
 
-        PsmGeneratorContext psmProjectGenerator = new PsmGeneratorContext(psmModel, urlTemplateLoader, urlResolver, generatorModel, helpers, valueResolversPar, handlebarsContextAccessor);
+        Collection<Class> helpersPar = new ArrayList<>();
+        if (args.helpers != null) {
+            helpersPar.addAll(args.helpers);
+        }
+
+        PsmGeneratorContext psmProjectGenerator = new PsmGeneratorContext(args.psmModel, urlTemplateLoader, urlResolver, generatorModel, helpersPar, valueResolversPar, args.handlebarsContextAccessor);
         return psmProjectGenerator;
     }
 

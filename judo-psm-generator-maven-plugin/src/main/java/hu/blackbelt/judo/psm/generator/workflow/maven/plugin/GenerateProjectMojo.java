@@ -452,7 +452,7 @@ public class GenerateProjectMojo extends AbstractMojo {
                 try {
                     handlebarsContextAccessorClass = Thread.currentThread().getContextClassLoader().loadClass(handlebarsContextAccessor);
                 } catch (Exception e) {
-                    getLog().error("Could not load handlebarsContextAccessor class: " + handlebarsContextAccessor);
+                    throw new IllegalArgumentException("Could not load handlebarsContextAccessor class: " + handlebarsContextAccessor, e);
                 }
             }
 
@@ -467,7 +467,15 @@ public class GenerateProjectMojo extends AbstractMojo {
             extras.putAll(templateParameters);
 
             PsmGenerator.generateToDirectory(PsmGeneratorParameter.psmGeneratorParameter()
-                    .generatorContext(PsmGenerator.createGeneratorContext(psmModel, type, resolvedUris, resolvedHelpers, resolvedValueResolvers, handlebarsContextAccessorClass, null,null))
+                    .generatorContext(PsmGenerator.createGeneratorContext(
+                            PsmGenerator.CreateGeneratorContextArgument.builder()
+                                    .psmModel(psmModel)
+                                    .descriptorName(type)
+                                    .uris(resolvedUris)
+                                    .helpers(resolvedHelpers)
+                                    .valueResolvers(resolvedValueResolvers)
+                                    .handlebarsContextAccessor(handlebarsContextAccessorClass)
+                                .build()))
                     .targetDirectoryResolver(() -> destination)
                     .extraContextVariables(() -> extras)
                     .actorTypeTargetDirectoryResolver(a -> destination)
