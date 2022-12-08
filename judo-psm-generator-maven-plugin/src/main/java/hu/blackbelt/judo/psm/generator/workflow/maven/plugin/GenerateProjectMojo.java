@@ -6,6 +6,7 @@ import hu.blackbelt.judo.meta.psm.PsmUtils;
 import hu.blackbelt.judo.meta.psm.runtime.PsmModel;
 import hu.blackbelt.judo.meta.psm.support.PsmModelResourceSupport;
 import hu.blackbelt.judo.psm.generator.engine.PsmGenerator;
+import hu.blackbelt.judo.psm.generator.engine.PsmGeneratorParameter;
 import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import org.apache.commons.compress.archivers.ArchiveEntry;
@@ -94,6 +95,8 @@ public class GenerateProjectMojo extends AbstractMojo {
     @Parameter(property="templateParameters", required = false, readonly = true)
     private HashMap<String, String> templateParameters;
 
+    @Parameter(property="handlebarsContextAccessor", required = false, readonly = true)
+    String handlebarsContextAccessor;
 
     Set<URL> classPathUrls = new HashSet<>();
 
@@ -444,6 +447,15 @@ public class GenerateProjectMojo extends AbstractMojo {
                 }
             }
 
+            Class handlebarsContextAccessorClass = null;
+            if (handlebarsContextAccessor != null && !"".equals(handlebarsContextAccessor.trim())) {
+                try {
+                    handlebarsContextAccessorClass = Thread.currentThread().getContextClassLoader().loadClass(handlebarsContextAccessor);
+                } catch (Exception e) {
+                    throw new IllegalArgumentException("Could not load handlebarsContextAccessor class: " + handlebarsContextAccessor, e);
+                }
+            }
+
             Map<String, Object> extras = project.getProperties().entrySet().stream().collect(
                     Collectors.toMap(
                             e -> String.valueOf(e.getKey()),
@@ -454,8 +466,16 @@ public class GenerateProjectMojo extends AbstractMojo {
             extras.putAll(repoSession.getConfigProperties());
             extras.putAll(templateParameters);
 
-            PsmGenerator.executePsmGenerationToDirectory(PsmGenerator.PsmGeneratorParameter.psmGeneratorParameter()
-                    .projectGenerator(PsmGenerator.createGeneratorContext(psmModel, type, resolvedUris, resolvedHelpers, resolvedValueResolvers, null, null))
+            PsmGenerator.generateToDirectory(PsmGeneratorParameter.psmGeneratorParameter()
+                    .generatorContext(PsmGenerator.createGeneratorContext(
+                            PsmGenerator.CreateGeneratorContextArgument.builder()
+                                    .psmModel(psmModel)
+                                    .descriptorName(type)
+                                    .uris(resolvedUris)
+                                    .helpers(resolvedHelpers)
+                                    .valueResolvers(resolvedValueResolvers)
+                                    .handlebarsContextAccessor(handlebarsContextAccessorClass)
+                                .build()))
                     .targetDirectoryResolver(() -> destination)
                     .extraContextVariables(() -> extras)
                     .actorTypeTargetDirectoryResolver(a -> destination)

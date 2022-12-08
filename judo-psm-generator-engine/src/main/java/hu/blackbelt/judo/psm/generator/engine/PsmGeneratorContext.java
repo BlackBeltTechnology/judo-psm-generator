@@ -35,7 +35,7 @@ public class PsmGeneratorContext {
     private final PsmModelResourceSupport modelResourceSupport;
 
     @Getter
-    private final Collection<GeneratorTemplate> generatorTemplates;
+    private final GeneratorModel generatorModel;
 
     @Getter
     private final Collection<Class> helpers;
@@ -43,23 +43,29 @@ public class PsmGeneratorContext {
     @Getter
     private final Collection<ValueResolver> valueResolvers;
 
+    @Getter
+    private final Class handlebarsContextAccessor;
+
+
     TemplateCache templateCache = new HighConcurrencyTemplateCache();
 
     public PsmGeneratorContext(PsmModel psmModel,
                                URLTemplateLoader templateLoader,
                                URLResolver urlResolver,
-                               Collection<GeneratorTemplate> generatorTemplates,
+                               GeneratorModel generatorModel,
                                Collection<Class> helpers,
-                               Collection<ValueResolver> valueResolvers) {
+                               Collection<ValueResolver> valueResolvers,
+                               Class handlebarsContextAccessor) {
 
         this.templateLoader = templateLoader;
         modelResourceSupport = PsmModelResourceSupport.psmModelResourceSupportBuilder()
                 .resourceSet(psmModel.getResourceSet())
                 .build();
-        this.generatorTemplates = generatorTemplates;
+        this.generatorModel = generatorModel;
         this.urlResolver = urlResolver;
         this.helpers = helpers;
         this.valueResolvers = valueResolvers;
+        this.handlebarsContextAccessor = handlebarsContextAccessor;
     }
 
     public Handlebars createHandlebars() {
@@ -86,16 +92,16 @@ public class PsmGeneratorContext {
         return handlebars;
     }
 
-    public StandardEvaluationContext createSpringEvaulationContext() {
-        StandardEvaluationContext spelContext = new StandardEvaluationContext();
+    public StandardEvaluationContext createSpringEvaluationContext() {
+        StandardEvaluationContext springElContext = new StandardEvaluationContext();
 
         for (Class helper : helpers) {
             Arrays.stream(helper.getMethods()).filter(m ->
                             Modifier.isPublic(m.getModifiers()) &&
                                     Modifier.isStatic(m.getModifiers()))
-                    .forEach(m -> spelContext.registerFunction(m.getName(), m));
+                    .forEach(m -> springElContext.registerFunction(m.getName(), m));
 
         }
-        return spelContext;
+        return springElContext;
     }
 }
