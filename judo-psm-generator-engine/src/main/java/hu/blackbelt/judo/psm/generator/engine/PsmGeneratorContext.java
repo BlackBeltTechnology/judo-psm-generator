@@ -44,7 +44,7 @@ public class PsmGeneratorContext {
     private final Collection<ValueResolver> valueResolvers;
 
     @Getter
-    private final Class handlebarsContextAccessor;
+    private final Class contextAccessor;
 
 
     TemplateCache templateCache = new HighConcurrencyTemplateCache();
@@ -55,7 +55,7 @@ public class PsmGeneratorContext {
                                GeneratorModel generatorModel,
                                Collection<Class> helpers,
                                Collection<ValueResolver> valueResolvers,
-                               Class handlebarsContextAccessor) {
+                               Class contextAccessor) {
 
         this.templateLoader = templateLoader;
         modelResourceSupport = PsmModelResourceSupport.psmModelResourceSupportBuilder()
@@ -65,7 +65,7 @@ public class PsmGeneratorContext {
         this.urlResolver = urlResolver;
         this.helpers = helpers;
         this.valueResolvers = valueResolvers;
-        this.handlebarsContextAccessor = handlebarsContextAccessor;
+        this.contextAccessor = contextAccessor;
     }
 
     public Handlebars createHandlebars() {

@@ -95,8 +95,8 @@ public class GenerateProjectMojo extends AbstractMojo {
     @Parameter(property="templateParameters", required = false, readonly = true)
     private HashMap<String, String> templateParameters;
 
-    @Parameter(property="handlebarsContextAccessor", required = false, readonly = true)
-    String handlebarsContextAccessor;
+    @Parameter(property="contextAccessor", required = false, readonly = true)
+    String contextAccessor;
 
     Set<URL> classPathUrls = new HashSet<>();
 
@@ -447,12 +447,12 @@ public class GenerateProjectMojo extends AbstractMojo {
                 }
             }
 
-            Class handlebarsContextAccessorClass = null;
-            if (handlebarsContextAccessor != null && !"".equals(handlebarsContextAccessor.trim())) {
+            Class contextAccessorClass = null;
+            if (contextAccessor != null && !"".equals(contextAccessor.trim())) {
                 try {
-                    handlebarsContextAccessorClass = Thread.currentThread().getContextClassLoader().loadClass(handlebarsContextAccessor);
+                    contextAccessorClass = Thread.currentThread().getContextClassLoader().loadClass(contextAccessor);
                 } catch (Exception e) {
-                    throw new IllegalArgumentException("Could not load handlebarsContextAccessor class: " + handlebarsContextAccessor, e);
+                    throw new IllegalArgumentException("Could not load contextAccessor class: " + contextAccessor, e);
                 }
             }
 
@@ -474,7 +474,7 @@ public class GenerateProjectMojo extends AbstractMojo {
                                     .uris(resolvedUris)
                                     .helpers(resolvedHelpers)
                                     .valueResolvers(resolvedValueResolvers)
-                                    .handlebarsContextAccessor(handlebarsContextAccessorClass)
+                                    .contextAccessor(contextAccessorClass)
                                 .build()))
                     .targetDirectoryResolver(() -> destination)
                     .extraContextVariables(() -> extras)
