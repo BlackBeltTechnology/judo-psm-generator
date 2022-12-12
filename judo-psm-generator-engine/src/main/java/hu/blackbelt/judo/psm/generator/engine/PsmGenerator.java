@@ -11,13 +11,13 @@ import hu.blackbelt.epsilon.runtime.execution.impl.BufferedSlf4jLogger;
 import hu.blackbelt.judo.meta.psm.accesspoint.ActorType;
 import hu.blackbelt.judo.meta.psm.namespace.Model;
 import hu.blackbelt.judo.meta.psm.runtime.PsmModel;
-import hu.blackbelt.judo.meta.psm.support.PsmModelResourceSupport;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.net.URL;
@@ -150,6 +150,9 @@ public class PsmGenerator {
                             Context.Builder contextBuilder = defaultHandlebarsContextBuilder.apply(element)
                                     .combine(ACTOR_TYPE, actorType);
 
+                            callBindContextForTypeIfCan(parameter.generatorContext, StandardEvaluationContext.class, templateContext);
+                            callBindContextForTypeIfCan(parameter.generatorContext, Map.class, parameter.extraContextVariables.get());
+
                             generatorTemplate.evalToContextBuilder(templateEvaulator, contextBuilder, templateContext);
                             GeneratedFile generatedFile = generateFile(parameter.generatorContext, templateContext, templateEvaulator, generatorTemplate, contextBuilder, log);
                             result.generatedByActors.get(actorType).add(generatedFile);
@@ -169,6 +172,9 @@ public class PsmGenerator {
 
                         StandardEvaluationContext templateContext = defaultSpringELContextProvider.apply(element);
                         Context.Builder contextBuilder = defaultHandlebarsContextBuilder.apply(element);
+
+                        callBindContextForTypeIfCan(parameter.generatorContext, StandardEvaluationContext.class, templateContext);
+                        callBindContextForTypeIfCan(parameter.generatorContext, Map.class, parameter.extraContextVariables.get());
 
                         generatorTemplate.evalToContextBuilder(templateEvaulator, contextBuilder, evaulationContext);
                         GeneratedFile generatedFile = generateFile(parameter.generatorContext, templateContext, templateEvaulator, generatorTemplate, contextBuilder, log);
@@ -215,22 +221,10 @@ public class PsmGenerator {
             StringWriter sourceFile = new StringWriter();
             try {
                 Context context = contextBuilder.build();
-                if (generatorContext.getHandlebarsContextAccessor() != null) {
-                    Arrays.stream(generatorContext.getHandlebarsContextAccessor().getMethods()).filter(m ->
-                                    m.getName().equals("bindContext") &&
-                                            Modifier.isPublic(m.getModifiers()) &&
-                                            Modifier.isStatic(m.getModifiers()) &&
-                                            m.getParameters().length == 1 &&
-                                            Context.class.isAssignableFrom(m.getParameters()[0].getType())
-                            ).findFirst()
-                            .orElseThrow(() -> new IllegalArgumentException("The 'handleabarsContextAccessor' does not " +
-                                    "have 'public static void bindContext(com.github.jknack.handlebars,Context)' method"))
-                            .invoke(null, context);
-
-                }
+                callBindContextForTypeIfCan(generatorContext, Context.class, context);
                 templateEvaulator.getTemplate().apply(context, sourceFile);
-            } catch (IllegalAccessException | InvocationTargetException | IOException e) {
-                log.error("Could not generate template: " + generatedFile.getPath());
+            } catch (Exception e) {
+                log.error("Could not generate file: " + generatedFile.getPath(), e);
             }
             generatedFile.setContent(sourceFile.toString().getBytes(Charsets.UTF_8));
         }
@@ -330,7 +324,7 @@ public class PsmGenerator {
         @Builder.Default
         Collection<ValueResolver> valueResolvers = null;
         @Builder.Default
-        Class handlebarsContextAccessor = null;
+        Class contextAccessor = null;
         @Builder.Default
         Function<List<URI>, URLTemplateLoader> urlTemplateLoaderFactory = null;
         @Builder.Default
@@ -391,8 +385,24 @@ public class PsmGenerator {
             helpersPar.addAll(args.helpers);
         }
 
-        PsmGeneratorContext psmProjectGenerator = new PsmGeneratorContext(args.psmModel, urlTemplateLoader, urlResolver, generatorModel, helpersPar, valueResolversPar, args.handlebarsContextAccessor);
+        PsmGeneratorContext psmProjectGenerator = new PsmGeneratorContext(args.psmModel, urlTemplateLoader, urlResolver, generatorModel, helpersPar, valueResolversPar, args.contextAccessor);
         return psmProjectGenerator;
     }
 
+
+    @SneakyThrows
+    private static void callBindContextForTypeIfCan(PsmGeneratorContext generatorContext, Class type, Object value) {
+        if (generatorContext.getContextAccessor() != null) {
+            Optional<Method> callMethod = Arrays.stream(generatorContext.getContextAccessor().getMethods()).filter(m ->
+                    m.getName().equals("bindContext") &&
+                            Modifier.isPublic(m.getModifiers()) &&
+                            Modifier.isStatic(m.getModifiers()) &&
+                            m.getParameters().length == 1 &&
+                            type.isAssignableFrom(m.getParameters()[0].getType())
+            ).findFirst();
+            if (callMethod.isPresent()) {
+                callMethod.get().invoke(null, value);
+            }
+        }
+    }
 }
