@@ -1,21 +1,14 @@
 package hu.blackbelt.judo.psm.generator.engine;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.github.jknack.handlebars.Context;
-import com.github.jknack.handlebars.internal.lang3.builder.ReflectionToStringBuilder;
-import com.github.jknack.handlebars.internal.lang3.builder.ToStringStyle;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
+import java.net.URI;
 import java.util.*;
 
 
@@ -45,7 +38,10 @@ public class GeneratorTemplate {
 	private String pathExpression;
 
 	private String template;
+
 	private String templateName;
+
+	private String templateBaseUri;
 
 	@Builder.Default
 	private boolean actorTypeBased = false;
@@ -67,23 +63,6 @@ public class GeneratorTemplate {
 			templateExpressions.put(ctx.getName(), contextTemplate);
 		});
 		return templateExpressions;
-	}
-
-
-	public static Collection<GeneratorTemplate> loadYamlURL(URL yaml) throws IOException {
-		ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-		List<GeneratorTemplate> templates = new ArrayList<>();
-		try {
-			InputStream is = yaml.openStream();
-			templates = mapper.readValue(is, new TypeReference<List<GeneratorTemplate>>(){});
-		} catch (FileNotFoundException e) {
-			log.warn("Yaml file not defined: " + yaml.toString());
-		} catch (IOException e) {
-			log.warn("Yaml file read error: " + yaml.toString(), e);
-		}
-
-		log.debug(ReflectionToStringBuilder.toString(templates, ToStringStyle.MULTI_LINE_STYLE));
-		return templates;
 	}
 
 	public TemplateEvaluator getTemplateEvalulator(PsmGeneratorContext projectGenerator, StandardEvaluationContext standardEvaluationContext) throws IOException {

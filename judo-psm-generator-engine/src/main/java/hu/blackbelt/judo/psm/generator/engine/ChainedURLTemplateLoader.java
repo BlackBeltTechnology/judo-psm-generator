@@ -28,7 +28,7 @@ public class ChainedURLTemplateLoader extends URLTemplateLoader implements URLRe
     final Map<String, Stack<String>> pathOrder;
 
 
-    public static ChainedURLTemplateLoader createFromURIs(List<URI> uris) {
+    public static ChainedURLTemplateLoader createFromURIs(Collection<URI> uris) {
         ChainedURLTemplateLoader clientGeneratorTemplateLoader = null;
         for (URI uri: uris) {
             clientGeneratorTemplateLoader = new ChainedURLTemplateLoader(clientGeneratorTemplateLoader, uri);

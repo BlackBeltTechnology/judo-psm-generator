@@ -13,6 +13,7 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.util.*;
 
@@ -38,12 +39,16 @@ public class GeneratorModel {
 	@Builder.Default
 	private Collection<GeneratorTemplate> templates = new HashSet<>();
 
-	public static GeneratorModel loadYamlURL(URL yaml) throws IOException {
+	public static GeneratorModel loadYamlURL(String originalUri, URL yaml) throws IOException {
 		ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 		GeneratorModel model = null;
 		try {
 			InputStream is = yaml.openStream();
 			model = mapper.readValue(is, new TypeReference<GeneratorModel>(){});
+
+			model.getTemplates().forEach(t -> {
+				t.setTemplateBaseUri(originalUri);
+			});
 		} catch (FileNotFoundException e) {
 			log.warn("Yaml file not defined: " + yaml.toString());
 		} catch (IOException e) {
