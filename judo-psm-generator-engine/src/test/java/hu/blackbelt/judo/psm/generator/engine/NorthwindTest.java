@@ -7,11 +7,12 @@ import hu.blackbelt.judo.meta.psm.accesspoint.ActorType;
 import hu.blackbelt.judo.meta.psm.runtime.PsmModel;
 import hu.blackbelt.model.northwind.Demo;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.emf.common.util.URI;
+//import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.junit.jupiter.api.*;
 
 import java.io.File;
+import java.net.URI;
 import java.util.*;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -39,7 +40,7 @@ public class NorthwindTest {
 
     @BeforeEach
     void setUp() {
-        psmModel = buildPsmModel().uri(URI.createURI(TEST_SOURCE_MODEL_NAME)).name(TEST).build();
+        psmModel = buildPsmModel().uri(org.eclipse.emf.common.util.URI.createURI(TEST_SOURCE_MODEL_NAME)).name(TEST).build();
     }
 
     @AfterEach
@@ -53,15 +54,18 @@ public class NorthwindTest {
 
         psmModel = new Demo().fullDemo();
         File testOutput =  new File(TARGET_TEST_CLASSES, NORTHWIND_TEST);
+
+        LinkedHashMap uris = new LinkedHashMap();
+        uris.put(new File(TARGET_TEST_CLASSES, OVERRIDE_1).toString(), new File(TARGET_TEST_CLASSES, OVERRIDE_1).toURI());
+        uris.put(new File(TARGET_TEST_CLASSES, OVERRIDE_2).toString(), new File(TARGET_TEST_CLASSES, OVERRIDE_2).toURI());
+
         try (Log bufferedLog = new BufferedSlf4jLogger(log)) {
             PsmGenerator.generateToDirectory(PsmGeneratorParameter.psmGeneratorParameter()
                             .generatorContext(PsmGenerator.createGeneratorContext(
                                     PsmGenerator.CreateGeneratorContextArgument.builder()
                                             .psmModel(psmModel)
                                             .descriptorName("test-project")
-                                            .uris(Arrays.asList(
-                                                    new File(TARGET_TEST_CLASSES, OVERRIDE_1).toURI(),
-                                                    new File(TARGET_TEST_CLASSES, OVERRIDE_2).toURI()))
+                                            .uris(uris)
                                             .helpers(Arrays.asList(TestHelper.class))
                                             .build()))
                             .log(bufferedLog)

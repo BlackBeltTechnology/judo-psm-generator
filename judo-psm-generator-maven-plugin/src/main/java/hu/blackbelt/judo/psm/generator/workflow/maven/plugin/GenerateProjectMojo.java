@@ -397,10 +397,10 @@ public class GenerateProjectMojo extends AbstractMojo {
         }
 
         try {
-            List<URI> resolvedUris = new ArrayList<>();
+            LinkedHashMap<String, URI> uriMap = new LinkedHashMap<>();
             if (uris != null) {
-                for (String overridePath : uris) {
-                    resolvedUris.add(getResolvedTemplateDirectory(overridePath).toURI());
+                for (String uri : uris) {
+                    uriMap.put(uri, getResolvedTemplateDirectory(uri).toURI());
                 }
             }
 
@@ -471,7 +471,7 @@ public class GenerateProjectMojo extends AbstractMojo {
                             PsmGenerator.CreateGeneratorContextArgument.builder()
                                     .psmModel(psmModel)
                                     .descriptorName(type)
-                                    .uris(resolvedUris)
+                                    .uris(uriMap)
                                     .helpers(resolvedHelpers)
                                     .valueResolvers(resolvedValueResolvers)
                                     .contextAccessor(contextAccessorClass)
