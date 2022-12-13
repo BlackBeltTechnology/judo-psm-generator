@@ -141,9 +141,9 @@ public class PsmGenerator {
 
                     Collection processingList = new HashSet(Arrays.asList(actorType));
                     if (templateEvaulator.getFactoryExpression() != null) {
-                        processingList = templateEvaulator.getFactoryExpressionResultOrValue(actorType, Collection.class);
+                        processingList = templateEvaulator.getFactoryExpressionResultOrValue(generatorTemplate, actorType, Collection.class);
                     }
-                    templateEvaulator.getFactoryExpressionResultOrValue(processingList, Collection.class).stream().forEach(element -> {
+                    templateEvaulator.getFactoryExpressionResultOrValue(generatorTemplate, processingList, Collection.class).stream().forEach(element -> {
                         tasks.add(CompletableFuture.supplyAsync(() -> {
                             StandardEvaluationContext templateContext = defaultSpringELContextProvider.apply(element);
                             templateContext.setVariable(ACTOR_TYPE, actorType);
@@ -168,7 +168,7 @@ public class PsmGenerator {
                 if (templateEvaulator.getTemplate() != null) {
                     iterableCollection = actorTypes;
                 }
-                templateEvaulator.getFactoryExpressionResultOrValue(iterableCollection, Collection.class).stream().forEach(element -> {
+                templateEvaulator.getFactoryExpressionResultOrValue(generatorTemplate, iterableCollection, Collection.class).stream().forEach(element -> {
                     tasks.add(CompletableFuture.supplyAsync(() -> {
 
                         StandardEvaluationContext templateContext = defaultSpringELContextProvider.apply(element);
@@ -200,7 +200,13 @@ public class PsmGenerator {
             final Log log) {
 
         GeneratedFile generatedFile = new GeneratedFile();
-        generatedFile.setPath(templateEvaulator.getPathExpression().getValue(evaluationContext, String.class));
+
+        try {
+            generatedFile.setPath(templateEvaulator.getPathExpression().getValue(evaluationContext, String.class));
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Could not evaluate path expression in " + generatorTemplate.toString());
+        }
+
 
         if (generatorTemplate.isCopy()) {
             String location = generatorTemplate.getTemplateName();
@@ -319,11 +325,11 @@ public class PsmGenerator {
         PsmModel psmModel;
         String descriptorName;
         @Builder.Default
-        LinkedHashMap<String, URI> uris = null;
+        LinkedHashMap<String, URI> uris = new LinkedHashMap<>();
         @Builder.Default
-        Collection<Class> helpers = null;
+        Collection<Class> helpers = new ArrayList<>();
         @Builder.Default
-        Collection<ValueResolver> valueResolvers = null;
+        Collection<ValueResolver> valueResolvers = new ArrayList<>();
         @Builder.Default
         Class contextAccessor = null;
         @Builder.Default
@@ -353,7 +359,7 @@ public class PsmGenerator {
             }
         }
 
-        if (args.uris == null || args.uris.isEmpty()) {
+        if (args.uris.isEmpty()) {
             throw new IllegalArgumentException("Minimum one URI is mandatory for templates");
         }
 
@@ -386,9 +392,17 @@ public class PsmGenerator {
             helpersPar.addAll(args.helpers);
         }
 
-        PsmGeneratorContext psmProjectGenerator = new PsmGeneratorContext(args.psmModel, urlTemplateLoader, urlResolver,
-                generatorModel, helpersPar, valueResolversPar, args.contextAccessor);
-        return psmProjectGenerator;
+        PsmGeneratorContext psmGeneratorContext = PsmGeneratorContext.builder()
+                .psmModel(args.psmModel)
+                .templateLoader(urlTemplateLoader)
+                .urlResolver(urlResolver)
+                .generatorModel(generatorModel)
+                .helpers(helpersPar)
+                .valueResolvers(valueResolversPar)
+                .contextAccessor(args.contextAccessor)
+                .build();
+
+        return psmGeneratorContext;
     }
 
 

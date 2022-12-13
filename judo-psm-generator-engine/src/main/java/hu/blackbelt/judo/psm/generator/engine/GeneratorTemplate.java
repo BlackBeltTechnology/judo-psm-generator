@@ -3,6 +3,7 @@ package hu.blackbelt.judo.psm.generator.engine;
 import com.github.jknack.handlebars.Context;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.expression.Expression;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
@@ -30,6 +31,7 @@ import java.util.*;
 @Getter
 @Setter
 @Builder(builderMethodName = "generatorTemplateBuilder")
+@ToString(exclude = "parser")
 public class GeneratorTemplate {
 
 	private String name;
@@ -71,11 +73,17 @@ public class GeneratorTemplate {
 
 	public void evalToContextBuilder(TemplateEvaluator templateEvaluator, Context.Builder contextBuilder, StandardEvaluationContext templateExpressionContext) {
 		templateContext.stream().forEach(ctx -> {
-
-			Class type = templateEvaluator.getTemplateExpressions().get(ctx.getName()).getValueType(templateExpressionContext);
-			contextBuilder.combine(ctx.getName(),
-					templateEvaluator.getTemplateExpressions().get(ctx.getName()).getValue(templateExpressionContext,
-							templateEvaluator.getTemplateExpressions().get(ctx.getName()).getValue(templateExpressionContext, type)));
+			Expression expression = templateEvaluator.getTemplateExpressions().get(ctx.getName());
+			if (expression != null) {
+				try {
+					Class type = templateEvaluator.getTemplateExpressions().get(ctx.getName()).getValueType(templateExpressionContext);
+					Object rootObject = templateEvaluator.getTemplateExpressions().get(ctx.getName()).getValue(templateExpressionContext, type);
+					Object value = templateEvaluator.getTemplateExpressions().get(ctx.getName()).getValue(templateExpressionContext, rootObject);
+					contextBuilder.combine(ctx.getName(), value);
+				} catch (Exception e) {
+					throw new IllegalArgumentException("Could not evaluate template context expression: " + expression.getExpressionString() + " in " + this);
+				}
+			}
 		});
 	}
 

@@ -11,11 +11,14 @@ import com.github.jknack.handlebars.io.URLTemplateLoader;
 import com.google.common.base.Charsets;
 import hu.blackbelt.judo.meta.psm.runtime.PsmModel;
 import hu.blackbelt.judo.meta.psm.support.PsmModelResourceSupport;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -49,13 +52,16 @@ public class PsmGeneratorContext {
 
     TemplateCache templateCache = new HighConcurrencyTemplateCache();
 
-    public PsmGeneratorContext(PsmModel psmModel,
-                               URLTemplateLoader templateLoader,
-                               URLResolver urlResolver,
-                               GeneratorModel generatorModel,
-                               Collection<Class> helpers,
-                               Collection<ValueResolver> valueResolvers,
-                               Class contextAccessor) {
+
+    @Builder
+    public PsmGeneratorContext(
+            @NonNull PsmModel psmModel,
+            @NonNull URLTemplateLoader templateLoader,
+            @NonNull URLResolver urlResolver,
+            @NonNull GeneratorModel generatorModel,
+            Collection<Class> helpers,
+            Collection<ValueResolver> valueResolvers,
+            Class contextAccessor) {
 
         this.templateLoader = templateLoader;
         modelResourceSupport = PsmModelResourceSupport.psmModelResourceSupportBuilder()
@@ -63,8 +69,16 @@ public class PsmGeneratorContext {
                 .build();
         this.generatorModel = generatorModel;
         this.urlResolver = urlResolver;
-        this.helpers = helpers;
-        this.valueResolvers = valueResolvers;
+        if (helpers == null) {
+            this.helpers = new ArrayList<>();
+        } else {
+            this.helpers = helpers;
+        }
+        if (valueResolvers == null) {
+            this.valueResolvers = new ArrayList<>();
+        } else {
+            this.valueResolvers = valueResolvers;
+        }
         this.contextAccessor = contextAccessor;
     }
 
