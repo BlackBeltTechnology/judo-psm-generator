@@ -11,13 +11,13 @@ import hu.blackbelt.epsilon.runtime.execution.impl.BufferedSlf4jLogger;
 import hu.blackbelt.judo.meta.psm.accesspoint.ActorType;
 import hu.blackbelt.judo.meta.psm.namespace.Model;
 import hu.blackbelt.judo.meta.psm.runtime.PsmModel;
-import hu.blackbelt.judo.meta.psm.support.PsmModelResourceSupport;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.net.URL;
@@ -42,6 +42,7 @@ public class PsmGenerator {
     public static final String YAML = ".yaml";
     public static final String ADD_DEBUG_TO_TEMPLATE = "addDebugToTemplate";
     public static final String TEMPLATE = "template";
+
     public static final String SELF = "self";
     public static final String ACTOR_TYPES = "actorTypes";
     public static final String ACTOR_TYPE = "actorType";
@@ -140,15 +141,18 @@ public class PsmGenerator {
 
                     Collection processingList = new HashSet(Arrays.asList(actorType));
                     if (templateEvaulator.getFactoryExpression() != null) {
-                        processingList = templateEvaulator.getFactoryExpressionResultOrValue(actorType, Collection.class);
+                        processingList = templateEvaulator.getFactoryExpressionResultOrValue(generatorTemplate, actorType, Collection.class);
                     }
-                    templateEvaulator.getFactoryExpressionResultOrValue(processingList, Collection.class).stream().forEach(element -> {
+                    templateEvaulator.getFactoryExpressionResultOrValue(generatorTemplate, processingList, Collection.class).stream().forEach(element -> {
                         tasks.add(CompletableFuture.supplyAsync(() -> {
                             StandardEvaluationContext templateContext = defaultSpringELContextProvider.apply(element);
                             templateContext.setVariable(ACTOR_TYPE, actorType);
 
                             Context.Builder contextBuilder = defaultHandlebarsContextBuilder.apply(element)
                                     .combine(ACTOR_TYPE, actorType);
+
+                            callBindContextForTypeIfCan(parameter.generatorContext, StandardEvaluationContext.class, templateContext);
+                            callBindContextForTypeIfCan(parameter.generatorContext, Map.class, parameter.extraContextVariables.get());
 
                             generatorTemplate.evalToContextBuilder(templateEvaulator, contextBuilder, templateContext);
                             GeneratedFile generatedFile = generateFile(parameter.generatorContext, templateContext, templateEvaulator, generatorTemplate, contextBuilder, log);
@@ -164,11 +168,14 @@ public class PsmGenerator {
                 if (templateEvaulator.getTemplate() != null) {
                     iterableCollection = actorTypes;
                 }
-                templateEvaulator.getFactoryExpressionResultOrValue(iterableCollection, Collection.class).stream().forEach(element -> {
+                templateEvaulator.getFactoryExpressionResultOrValue(generatorTemplate, iterableCollection, Collection.class).stream().forEach(element -> {
                     tasks.add(CompletableFuture.supplyAsync(() -> {
 
                         StandardEvaluationContext templateContext = defaultSpringELContextProvider.apply(element);
                         Context.Builder contextBuilder = defaultHandlebarsContextBuilder.apply(element);
+
+                        callBindContextForTypeIfCan(parameter.generatorContext, StandardEvaluationContext.class, templateContext);
+                        callBindContextForTypeIfCan(parameter.generatorContext, Map.class, parameter.extraContextVariables.get());
 
                         generatorTemplate.evalToContextBuilder(templateEvaulator, contextBuilder, evaulationContext);
                         GeneratedFile generatedFile = generateFile(parameter.generatorContext, templateContext, templateEvaulator, generatorTemplate, contextBuilder, log);
@@ -193,7 +200,13 @@ public class PsmGenerator {
             final Log log) {
 
         GeneratedFile generatedFile = new GeneratedFile();
-        generatedFile.setPath(templateEvaulator.getPathExpression().getValue(evaluationContext, String.class));
+
+        try {
+            generatedFile.setPath(templateEvaulator.getPathExpression().getValue(evaluationContext, String.class));
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Could not evaluate path expression in " + generatorTemplate.toString());
+        }
+
 
         if (generatorTemplate.isCopy()) {
             String location = generatorTemplate.getTemplateName();
@@ -215,22 +228,10 @@ public class PsmGenerator {
             StringWriter sourceFile = new StringWriter();
             try {
                 Context context = contextBuilder.build();
-                if (generatorContext.getHandlebarsContextAccessor() != null) {
-                    Arrays.stream(generatorContext.getHandlebarsContextAccessor().getMethods()).filter(m ->
-                                    m.getName().equals("bindContext") &&
-                                            Modifier.isPublic(m.getModifiers()) &&
-                                            Modifier.isStatic(m.getModifiers()) &&
-                                            m.getParameters().length == 1 &&
-                                            Context.class.isAssignableFrom(m.getParameters()[0].getType())
-                            ).findFirst()
-                            .orElseThrow(() -> new IllegalArgumentException("The 'handleabarsContextAccessor' does not " +
-                                    "have 'public static void bindContext(com.github.jknack.handlebars,Context)' method"))
-                            .invoke(null, context);
-
-                }
+                callBindContextForTypeIfCan(generatorContext, Context.class, context);
                 templateEvaulator.getTemplate().apply(context, sourceFile);
-            } catch (IllegalAccessException | InvocationTargetException | IOException e) {
-                log.error("Could not generate template: " + generatedFile.getPath());
+            } catch (Exception e) {
+                log.error("Could not generate file: " + generatedFile.getPath(), e);
             }
             generatedFile.setContent(sourceFile.toString().getBytes(Charsets.UTF_8));
         }
@@ -324,59 +325,59 @@ public class PsmGenerator {
         PsmModel psmModel;
         String descriptorName;
         @Builder.Default
-        List<URI> uris = null;
+        LinkedHashMap<String, URI> uris = new LinkedHashMap<>();
         @Builder.Default
-        Collection<Class> helpers = null;
+        Collection<Class> helpers = new ArrayList<>();
         @Builder.Default
-        Collection<ValueResolver> valueResolvers = null;
+        Collection<ValueResolver> valueResolvers = new ArrayList<>();
         @Builder.Default
-        Class handlebarsContextAccessor = null;
+        Class contextAccessor = null;
         @Builder.Default
-        Function<List<URI>, URLTemplateLoader> urlTemplateLoaderFactory = null;
+        Function<Collection<URI>, URLTemplateLoader> urlTemplateLoaderFactory = null;
         @Builder.Default
-        Function<List<URI>, URLResolver> urlResolverFactory = null;
+        Function<Collection<URI>, URLResolver> urlResolverFactory = null;
     }
 
     public static PsmGeneratorContext createGeneratorContext(CreateGeneratorContextArgument args) throws IOException {
-
-        GeneratorModel effectiveModel = GeneratorModel.generatorModelBuilder().build();
 
         URLTemplateLoader urlTemplateLoader = null;
         URLResolver urlResolver = null;
 
         if (args.urlTemplateLoaderFactory != null) {
-            urlTemplateLoader = args.urlTemplateLoaderFactory.apply(args.uris);
+            urlTemplateLoader = args.urlTemplateLoaderFactory.apply(args.uris.values());
             if (args.urlResolverFactory != null) {
-                urlResolver = args.urlResolverFactory.apply(args.uris);
+                urlResolver = args.urlResolverFactory.apply(args.uris.values());
             } else {
                 throw new IllegalStateException("Could not determinate URLResolver");
             }
         } else {
-            urlTemplateLoader = ChainedURLTemplateLoader.createFromURIs(args.uris);
+            urlTemplateLoader = ChainedURLTemplateLoader.createFromURIs(args.uris.values());
             if (args.urlResolverFactory != null) {
-                urlResolver = args.urlResolverFactory.apply(args.uris);
+                urlResolver = args.urlResolverFactory.apply(args.uris.values());
             } else {
                 urlResolver = (URLResolver) urlTemplateLoader;
             }
         }
 
-        if (args.uris == null || args.uris.isEmpty()) {
+        if (args.uris.isEmpty()) {
             throw new IllegalArgumentException("Minimum one URI is mandatory for templates");
         }
 
-        URI rootUri = args.uris.get(0);
-        List<URI> scriptUris = new ArrayList<>();
-        for (URI uri : args.uris) {
-            if (uri != rootUri) {
-                scriptUris.add(uri);
-            }
-        }
 
-        GeneratorModel generatorModel = GeneratorModel.loadYamlURL(UriHelper.calculateRelativeURI(rootUri, args.descriptorName + YAML).normalize().toURL());
-        for (URI uri : scriptUris) {
-            GeneratorModel overridedGeneratorModel = GeneratorModel.loadYamlURL(UriHelper.calculateRelativeURI(uri, args.descriptorName + YAML).normalize().toURL());
-            if (overridedGeneratorModel != null) {
-                generatorModel.overrideTemplates(overridedGeneratorModel.getTemplates());
+        GeneratorModel generatorModel = null;
+
+        Map.Entry<String, URI> root = args.uris.entrySet().stream().findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("No template URI is defined"));
+
+        for (Map.Entry<String, URI> entry : args.uris.entrySet()) {
+            GeneratorModel model = GeneratorModel.loadYamlURL(entry.getKey(),
+                    UriHelper.calculateRelativeURI(entry.getValue(), args.descriptorName + YAML).normalize().toURL());
+            if (entry == root) {
+                generatorModel = model;
+            } else {
+                if (model != null && generatorModel != null) {
+                    generatorModel.overrideTemplates(model.getTemplates());
+                }
             }
         }
 
@@ -391,8 +392,33 @@ public class PsmGenerator {
             helpersPar.addAll(args.helpers);
         }
 
-        PsmGeneratorContext psmProjectGenerator = new PsmGeneratorContext(args.psmModel, urlTemplateLoader, urlResolver, generatorModel, helpersPar, valueResolversPar, args.handlebarsContextAccessor);
-        return psmProjectGenerator;
+        PsmGeneratorContext psmGeneratorContext = PsmGeneratorContext.builder()
+                .psmModel(args.psmModel)
+                .templateLoader(urlTemplateLoader)
+                .urlResolver(urlResolver)
+                .generatorModel(generatorModel)
+                .helpers(helpersPar)
+                .valueResolvers(valueResolversPar)
+                .contextAccessor(args.contextAccessor)
+                .build();
+
+        return psmGeneratorContext;
     }
 
+
+    @SneakyThrows
+    private static void callBindContextForTypeIfCan(PsmGeneratorContext generatorContext, Class type, Object value) {
+        if (generatorContext.getContextAccessor() != null) {
+            Optional<Method> callMethod = Arrays.stream(generatorContext.getContextAccessor().getMethods()).filter(m ->
+                    m.getName().equals("bindContext") &&
+                            Modifier.isPublic(m.getModifiers()) &&
+                            Modifier.isStatic(m.getModifiers()) &&
+                            m.getParameters().length == 1 &&
+                            type.isAssignableFrom(m.getParameters()[0].getType())
+            ).findFirst();
+            if (callMethod.isPresent()) {
+                callMethod.get().invoke(null, value);
+            }
+        }
+    }
 }
