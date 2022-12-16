@@ -1,15 +1,15 @@
 JUDO Tatami PSM Archetype maven plugin
-========================================
+======================================
 
 This plugin manages and executes generators for JUDO PSM models.
 
 It generates text based codes / reports from PSM model with the given templates.
 
-## Requirements
+== Requirements
 
 - Maven 3.8.3 and Java 11
 
-## Installation
+== Installation
 
 Include the plugin as a dependency in your Maven project. Change `LATEST_VERSION` to the latest tagged version.
 
@@ -24,7 +24,7 @@ Include the plugin as a dependency in your Maven project. Change `LATEST_VERSION
 
 ```
 
-## Usage
+== Usage
 
 Executing a template for an PSM model
 
@@ -60,7 +60,7 @@ Executing a template for an PSM model
                 <valueResolvers> <!-- 7 -->
                     <helper>hu.blackbelt.judo.psm.fullstack.project.archetype.ActorTypeValueResolver</helper>
                 </valueResolvers>
-                <handlebarsContextAccessor>hu.blackbelt.judo.psm.fullstack.project.archetype.ActorTypeValueResolver</handlebarsContextAccessor> <!-- 8 -->
+                <contextAccessor>hu.blackbelt.judo.psm.fullstack.project.archetype.ActorTypeValueResolver</contextAccessor> <!-- 8 -->
 
             </configuration>
         </execution>
@@ -109,17 +109,27 @@ templates woth the same name.
 <7> ValueHelpers. It must implement `com.github.jknack.handlebars.ValueResolver`. It can be used to extend types with methods. These
 only used in templates, it cannot be used in SpringEL.
 
-<8> HandlebarsContextAccessor. It can be used to store Handlebars Context which can be accessed by type resolvers. It has to implement
-the `public static void bindContext(com.github.jknack.handlebars.Context)` method. Recommended to store the context in ThreadLocal, because
+<8> ContextAccessor. It can be used to store Handlebars / SpringEL / Parameters Context which can be accessed by type resolvers.
+It can implement any of the following methods, depends on which context can be registered:
+- `public static void bindContext(com.github.jknack.handlebars.Context)` Register handlebars context. It is called immediately before templating,
+   so it is not recommended to use to calculate factory or path values with it.
+- `public static void bindContext(org.springframework.expression.spel.support.StandardEvaluationContext context)` It registers
+   Spring Expression Language context. It is called before any templating, it can be used in yaml and template context too.
+- `public static void bindContext(java.util.Map<String, Object> parameters`)
+   It is registers the given external parameters. It is called before any templating, it can be used in yaml and template context too.
+
++
+Recommended to store the context in ThreadLocal, because
 templating is running in multiple threads.
 
-## Generation
+
+== Generation
 
 For code generation handlebars template is used. The `<project type>-project.yaml` file
 describes what template is used for that and control which parameters
 are passed and PSM model can control HOW the templates can be used.
 
-## Override templates in generation
+== Override templates in generation
 
 The template override can contain a `<project type>-project.yaml` which can be empty, on that case the
 existing templates can be overrided only. The content of project file is used to override existing
@@ -127,7 +137,7 @@ template definition or can be added new templates. The ovirrided preferences rev
 All of the templates can be decorated, when the original file name is suffixed with `override.hbs`. When it is
 defined the original one can be included with the standard fragment syntax of handlebars.
 
-### Example:
+=== Example:
 To decorate `file_for_actor.test.hbs,` put `file_for_actor.test.override.hbs` file. The original content can be referenced:
 
 ```
@@ -135,7 +145,7 @@ The original content:
 {{> lib/file_for_actor.test.hbs }}
 ```
 
-## <project type>-project.yaml file
+== <project type>-project.yaml file
 
 This file is used to control generation process. This file is using the PSM model and the given helpers.
 
@@ -180,7 +190,7 @@ variable.
 <1> For static file without any template `copy` attribute can be used.
 
 
-## Ignore files on generation
+== Ignore files on generation
 
 Sometimes a developer needs to replace generated file with custom develped file. On that case
 the generation have to ignore the given file to keep the edited version. To achive this
