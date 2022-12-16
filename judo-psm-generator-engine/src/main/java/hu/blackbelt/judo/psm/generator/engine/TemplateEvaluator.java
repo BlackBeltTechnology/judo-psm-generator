@@ -40,11 +40,15 @@ public class TemplateEvaluator {
         }
     }
 
-    public <C> C getFactoryExpressionResultOrValue(Object value, Class<C> type) {
+    public <C> C getFactoryExpressionResultOrValue(GeneratorTemplate template, Object value, Class<C> type) {
         if (getFactoryExpression() == null && type.isAssignableFrom(value.getClass())) {
             return (C) value;
         } else {
-            return getFactoryExpression().getValue(standardEvaluationContext, value, type);
+            try {
+                return getFactoryExpression().getValue(standardEvaluationContext, value, type);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Could not evaluate factory expression in " + template.toString());
+            }
         }
     }
 }

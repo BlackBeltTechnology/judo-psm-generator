@@ -44,8 +44,8 @@
         <slf4j-version>1.7.36</slf4j-version>
 
         <!-- Model versions -->
-        <judo-meta-psm-version>1.2.2</judo-meta-psm-version>
-        <epsilon-runtime-version>1.5.1.20221005_230707_b5e4278d_develop</epsilon-runtime-version>
+        <judo-meta-psm-version>1.2.3</judo-meta-psm-version>
+        <epsilon-runtime-version>1.5.0</epsilon-runtime-version>
 
         <!--suppress UnresolvedMavenProperty -->
         <logback-test-config>${maven.multiModuleProjectDirectory}/logback-test.xml</logback-test-config>
