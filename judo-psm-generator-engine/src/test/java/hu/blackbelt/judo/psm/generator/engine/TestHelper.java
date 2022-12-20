@@ -1,6 +1,8 @@
 package hu.blackbelt.judo.psm.generator.engine;
 
 import com.github.jknack.handlebars.internal.lang3.StringUtils;
+import hu.blackbelt.judo.generator.commons.StaticMethodValueResolver;
+import hu.blackbelt.judo.generator.commons.annotations.TemplateHelper;
 import hu.blackbelt.judo.meta.psm.PsmUtils;
 import hu.blackbelt.judo.meta.psm.accesspoint.ActorType;
 import lombok.SneakyThrows;
@@ -13,11 +15,13 @@ import java.util.stream.Collectors;
 import static java.util.Arrays.stream;
 
 @Log
-public class TestHelper {
+@TemplateHelper
+public class TestHelper extends StaticMethodValueResolver {
 
-    public static String getFQName(ActorType actorType) {
-        return PsmUtils.namespaceToString(actorType.getNamespace());
+    public static String fQName(ActorType actorType) {
+        return PsmUtils.namespaceToString(actorType.getNamespace()) + "::" + actorType.getName();
     }
+
 
     public static String plainName(String input) {
         return input == null ? "" : input

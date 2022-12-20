@@ -9,6 +9,7 @@ import com.github.jknack.handlebars.helper.ConditionalHelpers;
 import com.github.jknack.handlebars.helper.StringHelpers;
 import com.github.jknack.handlebars.io.URLTemplateLoader;
 import com.google.common.base.Charsets;
+import hu.blackbelt.judo.generator.commons.URLResolver;
 import hu.blackbelt.judo.meta.psm.runtime.PsmModel;
 import hu.blackbelt.judo.meta.psm.support.PsmModelResourceSupport;
 import lombok.Builder;

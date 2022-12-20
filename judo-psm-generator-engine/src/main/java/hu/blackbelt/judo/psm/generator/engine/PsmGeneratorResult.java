@@ -1,5 +1,6 @@
 package hu.blackbelt.judo.psm.generator.engine;
 
+import hu.blackbelt.judo.generator.commons.GeneratedFile;
 import hu.blackbelt.judo.meta.psm.accesspoint.ActorType;
 import lombok.Builder;
 import lombok.Getter;
