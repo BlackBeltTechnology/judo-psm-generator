@@ -3,6 +3,7 @@ package hu.blackbelt.judo.psm.generator.engine;
 import com.google.common.collect.ImmutableMap;
 import hu.blackbelt.epsilon.runtime.execution.api.Log;
 import hu.blackbelt.epsilon.runtime.execution.impl.BufferedSlf4jLogger;
+import hu.blackbelt.judo.generator.commons.TemplateHelperFinder;
 import hu.blackbelt.judo.meta.psm.accesspoint.ActorType;
 import hu.blackbelt.judo.meta.psm.runtime.PsmModel;
 import hu.blackbelt.model.northwind.Demo;
@@ -12,7 +13,6 @@ import org.eclipse.emf.ecore.EObject;
 import org.junit.jupiter.api.*;
 
 import java.io.File;
-import java.net.URI;
 import java.util.*;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -66,7 +66,7 @@ public class NorthwindTest {
                                             .psmModel(psmModel)
                                             .descriptorName("test-project")
                                             .uris(uris)
-                                            .helpers(Arrays.asList(TestHelper.class))
+                                            .helpers(TemplateHelperFinder.collectHelpersAsClass(this.getClass().getClassLoader()))
                                             .build()))
                             .log(bufferedLog)
                             .targetDirectoryResolver(() -> testOutput)

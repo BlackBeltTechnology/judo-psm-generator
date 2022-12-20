@@ -8,6 +8,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteStreams;
 import hu.blackbelt.epsilon.runtime.execution.api.Log;
 import hu.blackbelt.epsilon.runtime.execution.impl.BufferedSlf4jLogger;
+import hu.blackbelt.judo.generator.commons.*;
 import hu.blackbelt.judo.meta.psm.accesspoint.ActorType;
 import hu.blackbelt.judo.meta.psm.namespace.Model;
 import hu.blackbelt.judo.meta.psm.runtime.PsmModel;
@@ -16,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 import java.io.*;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URI;
@@ -231,7 +231,7 @@ public class PsmGenerator {
                 callBindContextForTypeIfCan(generatorContext, Context.class, context);
                 templateEvaulator.getTemplate().apply(context, sourceFile);
             } catch (Exception e) {
-                log.error("Could not generate file: " + generatedFile.getPath(), e);
+                throw new RuntimeException("Could not generate file: " + generatedFile.getPath(), e);
             }
             generatedFile.setContent(sourceFile.toString().getBytes(Charsets.UTF_8));
         }
@@ -328,8 +328,8 @@ public class PsmGenerator {
         LinkedHashMap<String, URI> uris = new LinkedHashMap<>();
         @Builder.Default
         Collection<Class> helpers = new ArrayList<>();
-        @Builder.Default
-        Collection<ValueResolver> valueResolvers = new ArrayList<>();
+        //@Builder.Default
+        //Collection<ValueResolver> valueResolvers = new ArrayList<>();
         @Builder.Default
         Class contextAccessor = null;
         @Builder.Default
@@ -382,9 +382,20 @@ public class PsmGenerator {
         }
 
         List<ValueResolver> valueResolversPar = new ArrayList<>();
-        valueResolversPar.add(new PsmValueResolver());
-        if (args.valueResolvers != null) {
-            valueResolversPar.addAll(args.valueResolvers);
+        for (Class helper : args.helpers) {
+            if (ValueResolver.class.isAssignableFrom(helper) &&
+                    valueResolversPar.stream().map(v -> v.getClass()).filter(v -> v == helper).findAny().isEmpty()) {
+                try {
+                    Object o = helper.getDeclaredConstructor().newInstance();
+                    if (o instanceof ValueResolver) {
+                        valueResolversPar.add((ValueResolver) o);
+                    } else {
+                        throw new IllegalArgumentException("Could not instantiate value resolver class: " + helper.getName());
+                    }
+                } catch (Exception e) {
+                    throw new IllegalArgumentException("Could not load value resolver class: " + helper.getName());
+                }
+            }
         }
 
         Collection<Class> helpersPar = new ArrayList<>();

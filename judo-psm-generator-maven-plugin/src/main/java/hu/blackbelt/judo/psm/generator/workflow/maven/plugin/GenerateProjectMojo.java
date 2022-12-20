@@ -1,7 +1,7 @@
 package hu.blackbelt.judo.psm.generator.workflow.maven.plugin;
 
-import com.github.jknack.handlebars.ValueResolver;
 import com.google.common.io.Files;
+import hu.blackbelt.judo.generator.commons.TemplateHelperFinder;
 import hu.blackbelt.judo.meta.psm.PsmUtils;
 import hu.blackbelt.judo.meta.psm.runtime.PsmModel;
 import hu.blackbelt.judo.meta.psm.support.PsmModelResourceSupport;
@@ -89,14 +89,14 @@ public class GenerateProjectMojo extends AbstractMojo {
     @Parameter(property = "helpers")
     private List<String> helpers = new ArrayList<>();
 
-    @Parameter(property = "valueResolvers")
-    private List<String> valueResolvers = new ArrayList<>();
-
     @Parameter(property="templateParameters", required = false, readonly = true)
     private HashMap<String, String> templateParameters;
 
     @Parameter(property="contextAccessor", required = false, readonly = true)
-    String contextAccessor;
+    private String contextAccessor;
+
+    @Parameter(property="scanDependencies", required = false, readonly = true, defaultValue = "true")
+    private Boolean scanDependencies;
 
     Set<URL> classPathUrls = new HashSet<>();
 
@@ -404,53 +404,44 @@ public class GenerateProjectMojo extends AbstractMojo {
                 }
             }
 
-            Collection<Class> resolvedHelpers = new ArrayList<>();
-            if (helpers != null) {
-                for (String helperClass : helpers) {
-                    try {
-                        Class clazz = Thread.currentThread().getContextClassLoader().loadClass(helperClass);
-                        resolvedHelpers.add(clazz);
-                    } catch (Exception e) {
-                        getLog().error("Could not load helper class: " + helperClass);
-                    }
+            Collection<Class> resolvedHelpers = new HashSet<>();
+            for (String helperClass : helpers) {
+                try {
+                    Class clazz = Thread.currentThread().getContextClassLoader().loadClass(helperClass);
+                    resolvedHelpers.add(clazz);
+                } catch (Exception e) {
+                    getLog().error("Could not load helper class: " + helperClass);
                 }
             }
 
-            Collection<ValueResolver> resolvedValueResolvers = new ArrayList<>();
-            if (valueResolvers != null) {
-                for (String valueResolverClass : valueResolvers) {
-                    try {
-                        Class clazz = Thread.currentThread().getContextClassLoader().loadClass(valueResolverClass);
-                        Object o = clazz.getDeclaredConstructor().newInstance();
-                        if (o instanceof ValueResolver) {
-                            resolvedValueResolvers.add((ValueResolver) o);
-                        } else {
-                            getLog().error("Could not instantiate value resolver class: " + valueResolverClass);
-                        }
-                    } catch (Exception e) {
-                        getLog().error("Could not load value resolver class: " + valueResolverClass);
+            AtomicReference<Class> contextAccessorClass = new AtomicReference<>();
+
+            if (scanDependencies) {
+                getLog().info("Scanning classpath for helpers...");
+                try {
+                    Collection<Class> scannedHelpers = TemplateHelperFinder.collectHelpersAsClass(Thread.currentThread().getContextClassLoader());
+                    for (Class helper : scannedHelpers) {
+                        getLog().info("Helper found: " + helper.getName());
                     }
+                    if (scannedHelpers.size() == 0) {
+                        getLog().warn("No class with @TemplateHelper found");
+                    }
+                    resolvedHelpers.addAll(scannedHelpers);
+                } catch (IOException e) {
+                    throw new MojoExecutionException("Could not scan dependencies", e);
                 }
-                for (Class helper : resolvedHelpers) {
-                    if (ValueResolver.class.isAssignableFrom(helper)) {
-                        try {
-                            Object o = helper.getDeclaredConstructor().newInstance();
-                            if (o instanceof ValueResolver) {
-                                resolvedValueResolvers.add((ValueResolver) o);
-                            } else {
-                                getLog().error("Could not instantiate value resolver class: " + helper.getName());
-                            }
-                        } catch (Exception e) {
-                            getLog().error("Could not load value resolver class: " + helper.getName());
-                        }
-                    }
+
+                if (contextAccessor == null || contextAccessor.isBlank()) {
+                    TemplateHelperFinder.findContextAccessorAsClass(Thread.currentThread().getContextClassLoader()).ifPresent(c -> {
+                        getLog().info("ContextAccessor class found: " + c.getName());
+                        contextAccessorClass.set(c);
+                    });
                 }
             }
 
-            Class contextAccessorClass = null;
             if (contextAccessor != null && !"".equals(contextAccessor.trim())) {
                 try {
-                    contextAccessorClass = Thread.currentThread().getContextClassLoader().loadClass(contextAccessor);
+                    contextAccessorClass.set(Thread.currentThread().getContextClassLoader().loadClass(contextAccessor));
                 } catch (Exception e) {
                     throw new IllegalArgumentException("Could not load contextAccessor class: " + contextAccessor, e);
                 }
@@ -473,8 +464,7 @@ public class GenerateProjectMojo extends AbstractMojo {
                                     .descriptorName(type)
                                     .uris(uriMap)
                                     .helpers(resolvedHelpers)
-                                    .valueResolvers(resolvedValueResolvers)
-                                    .contextAccessor(contextAccessorClass)
+                                    .contextAccessor(contextAccessorClass.get())
                                 .build()))
                     .targetDirectoryResolver(() -> destination)
                     .extraContextVariables(() -> extras)

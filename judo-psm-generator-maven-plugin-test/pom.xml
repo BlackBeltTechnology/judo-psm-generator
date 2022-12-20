@@ -91,9 +91,11 @@
                                 <uri>${basedir}/src/test/resources/override1</uri>
                                 <uri>${basedir}/src/test/resources/override2</uri>
                             </uris>
+                            <!--
                             <helpers>
                                 <helper>hu.blackbelt.psm.generator.maven.plugin.test.TestHelper</helper>
                             </helpers>
+                            -->
                             <type>test-project</type>
                             <psm>${basedir}/target/classes/psm/northwind-psm.model</psm>
                             <destination>${basedir}/target/test-classes/psm/file</destination>
@@ -118,9 +120,11 @@
                                 <uri>${basedir}/src/test/resources/override1</uri>
                                 <uri>${basedir}/src/test/resources/override2</uri>
                             </uris>
+                            <!--
                             <helpers>
                                 <helper>hu.blackbelt.psm.generator.maven.plugin.test.TestHelper</helper>
                             </helpers>
+                            -->
                             <type>test-project</type>
                             <psm>mvn:hu.blackbelt.judo.meta:hu.blackbelt.judo.meta.psm.model.northwind:${judo-meta-psm-version}!northwind-psm.model</psm>
                             <destination>${basedir}/target/test-classes/psm/artifact</destination>
@@ -143,9 +147,11 @@
                                 <uri>${basedir}/src/test/resources/override1</uri>
                                 <uri>${basedir}/src/test/resources/override2</uri>
                             </uris>
+                            <!--
                             <helpers>
                                 <helper>hu.blackbelt.psm.generator.maven.plugin.test.TestHelper</helper>
                             </helpers>
+                            -->
                             <type>test-project</type>
                             <psm>${basedir}/target/classes/psm/northwind-psm.model</psm>
                             <destination>${basedir}/target/test-classes/psm/singleclient</destination>
@@ -231,6 +237,10 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-expression</artifactId>
             <version>5.0.0.RELEASE</version>
+        </dependency>
+        <dependency>
+            <groupId>hu.blackbelt.judo.meta</groupId>
+            <artifactId>hu.blackbelt.judo.meta.psm.model</artifactId>
         </dependency>
 
     </dependencies>
