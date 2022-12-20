@@ -1,6 +1,10 @@
 package hu.blackbelt.psm.generator.maven.plugin.test;
 
 import com.github.jknack.handlebars.internal.lang3.StringUtils;
+import hu.blackbelt.judo.generator.commons.StaticMethodValueResolver;
+import hu.blackbelt.judo.generator.commons.annotations.TemplateHelper;
+import hu.blackbelt.judo.meta.psm.PsmUtils;
+import hu.blackbelt.judo.meta.psm.accesspoint.ActorType;
 import lombok.SneakyThrows;
 import lombok.extern.java.Log;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
@@ -11,16 +15,16 @@ import java.util.stream.Collectors;
 import static java.util.Arrays.stream;
 
 @Log
-public class TestHelper {
+@TemplateHelper
+public class TestHelper extends StaticMethodValueResolver {
+
+    public static String fQName(ActorType actorType) {
+        return PsmUtils.namespaceToString(actorType.getNamespace()) + "::" + actorType.getName();
+    }
 
     public static String plainName(String input) {
         return input
-//                .replaceAll("[^\\\\u(\\p{XDigit}{4})]", "_")
                 .replaceAll("[^\\.A-Za-z0-9_]", "_").toLowerCase();
-    }
-
-    public static String cleanup(String string) {
-        return string.replaceAll("[\\n\\t ]", "");
     }
 
     public static String pathName(String fqName) {
