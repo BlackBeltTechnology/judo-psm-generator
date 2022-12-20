@@ -45,6 +45,7 @@
 
         <!-- Model versions -->
         <judo-meta-psm-version>1.2.4.20221208_130618_fd953c86_develop</judo-meta-psm-version>
+        <judo-generator-commons-version>1.0.0.20221220_005707_072b438d_feature_JNG_4327_AutoscanTemplateHelpers</judo-generator-commons-version>
         <epsilon-runtime-version>1.5.0</epsilon-runtime-version>
 
         <!--suppress UnresolvedMavenProperty -->
@@ -151,7 +152,7 @@
         <dependency>
             <groupId>hu.blackbelt.judo.generator</groupId>
             <artifactId>judo-generator-commons</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
+            <version>${judo-generator-commons-version}</version>
         </dependency>
     </dependencies>
 
