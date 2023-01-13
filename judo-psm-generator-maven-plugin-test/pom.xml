@@ -93,7 +93,7 @@
                             </uris>
                             <!--
                             <helpers>
-                                <helper>hu.blackbelt.psm.generator.maven.plugin.test.TestHelper</helper>
+                                <helper>hu.blackbelt.judo.meta.psm.generator.maven.plugin.test.TestHelper</helper>
                             </helpers>
                             -->
                             <type>test-project</type>
@@ -122,7 +122,7 @@
                             </uris>
                             <!--
                             <helpers>
-                                <helper>hu.blackbelt.psm.generator.maven.plugin.test.TestHelper</helper>
+                                <helper>hu.blackbelt.judo.meta.psm.generator.maven.plugin.test.TestHelper</helper>
                             </helpers>
                             -->
                             <type>test-project</type>
@@ -149,7 +149,7 @@
                             </uris>
                             <!--
                             <helpers>
-                                <helper>hu.blackbelt.psm.generator.maven.plugin.test.TestHelper</helper>
+                                <helper>hu.blackbelt.judo.meta.psm.generator.maven.plugin.test.TestHelper</helper>
                             </helpers>
                             -->
                             <type>test-project</type>
