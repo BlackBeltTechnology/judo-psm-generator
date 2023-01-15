@@ -44,7 +44,7 @@
         <slf4j-version>1.7.36</slf4j-version>
 
         <!-- Model versions -->
-        <judo-meta-psm-version>1.2.4.20230104_101110_84fa8111_develop</judo-meta-psm-version>
+        <judo-meta-psm-version>1.2.4.20230115_193253_58b91836_develop</judo-meta-psm-version>
         <judo-generator-commons-version>1.0.0.20221220_110710_a0ae1c70_develop</judo-generator-commons-version>
         <epsilon-runtime-version>1.5.1.20230104_095653_96994f3f_develop</epsilon-runtime-version>
 
